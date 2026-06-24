@@ -1,0 +1,58 @@
+%%INSTRUCCIONES%%
+Variables: {{CIUDAD}} {{CIUDAD_MIN}} {{PROVINCIA}} {{DOMINIO}} {{URL_BASE}} {{TELEFONO}} {{TEL_PLANO}} {{EMAIL}} {{EMPRESA}} {{ANOS}} {{DESDE}} {{SLUG}}
+FIN DE INSTRUCCIONES — EL SPINTAX EMPIEZA EN LA LÍNEA SIGUIENTE
+
+{Incendio en bar de {{CIUDAD}}: cómo volver a abrir cuanto antes sin perder ni un cliente|Limpieza de incendios en bares de {{CIUDAD}}: guía práctica para baristas y hosteleros|Cuando el fuego afecta a tu bar en {{CIUDAD}}: lo que hay que hacer y lo que no puede esperar|Incendio en local de hostelería de {{CIUDAD}}: protocolo de limpieza y reapertura urgente|Limpieza post-incendio en bares de {{CIUDAD}}: de la barra quemada a la puerta abierta|Tu bar de {{CIUDAD}} ha sufrido un incendio: esto es lo que debes hacer en las próximas horas}
+
+{Un bar cerrado en {{CIUDAD}} no solo pierde ventas. Pierde clientela habitual que, si tarda demasiado en volver a encontrar el local abierto, acaba acostumbrándose a otro.|El bar de barrio de {{CIUDAD}} tiene algo que no tiene ningún otro negocio: una clientela fiel que viene todos los días. Cuando el fuego lo cierra, esa clientela no espera: se va al bar de al lado. Y si tarda semanas en volver a abrir, parte de esa clientela no regresa.|Un incendio en un bar de {{CIUDAD}} tiene un coste que el seguro no cubre del todo: la pérdida de clientes habituales durante el cierre. Por eso la velocidad de reapertura no es un lujo: es la diferencia entre recuperar el negocio y empezar de cero.}
+
+{Cuando el fuego afecta a un bar en {{CIUDAD}} —ya sea un bar de tapas, una cafetería de desayunos, un local de copas o un pub de toda la vida—, la urgencia tiene una sola dirección: reabrir en el menor tiempo posible, sin olor y sin rastro del siniestro.|Cuando las llamas alcanzan un local de bebidas en {{CIUDAD}}, los problemas son más variados de lo que parece: la barra dañada, la cafetera quemada, el olor a humo que impregna las paredes, el hollín en las botellas del expositor y la nevera contaminada.|Cuando un incendio compromete un bar de {{CIUDAD}}, el dueño se enfrenta simultáneamente a la limpieza del local, la gestión del seguro, el inventario de lo perdido y la comunicación con los clientes habituales que ya están preguntando cuándo abre.}
+
+{En {{EMPRESA}} llevamos {{ANOS}} años interviniendo en bares y locales de hostelería de {{CIUDAD}} y de toda España. Sabemos que en un bar el tiempo es dinero y que cada día cerrado es un día que los clientes se acostumbran a otro local.|Desde {{DESDE}}, {{EMPRESA}} ha gestionado siniestros post-incendio en bares de {{CIUDAD}} de todos los tipos. El sector de la hostelería de proximidad tiene sus particularidades, y nosotros las conocemos.|Con {{ANOS}} años de experiencia en {{CIUDAD}}, {{EMPRESA}} tiene el protocolo específico para bares que minimiza el tiempo de cierre, elimina el olor por completo y aporta la documentación que el seguro necesita.}
+
+---
+
+{## Los focos de incendio más habituales en bares de {{CIUDAD}}|## Dónde empieza el fuego en un bar de {{CIUDAD}} y por qué es diferente|## Por qué los bares de {{CIUDAD}} tienen un riesgo de incendio específico}
+
+{Los incendios en bares de {{CIUDAD}} tienen focos muy concretos que determinan el tipo de contaminación y el protocolo de limpieza:|Los siniestros en bares y locales de hostelería de {{CIUDAD}} responden a patrones bien conocidos:|En los bares de {{CIUDAD}}, los focos de incendio más frecuentes son:}
+
+{La plancha, la freidora o el fuego de la cocina: el foco más habitual en bares con cocina en {{CIUDAD}}. Una plancha con grasa acumulada que se deja encendida fuera del horario, o una freidora cuya temperatura sube por encima del punto de inflamación del aceite, puede generar un incendio que destruye la cocina entera en minutos.|El cuadro eléctrico sobrecargado: los bares de {{CIUDAD}} tienen una densidad eléctrica muy alta para su tamaño: cámaras frigoríficas, máquina de café, lavavajillas industrial, televisiones, sistemas de música, iluminación. Un cuadro antiguo que no aguanta esa carga puede originar un cortocircuito que incendie el local.|La campana extractora con grasa acumulada: en los bares de {{CIUDAD}} que tienen cocina, los conductos de extracción acumulan grasa con rapidez si el mantenimiento no es regular. Un incendio en el conducto se propaga por todo su recorrido en segundos y puede alcanzar el tejado.}
+
+{El incendio en la zona de almacenamiento: los almacenes de los bares de {{CIUDAD}} suelen ser pequeños y muy llenos de materiales combustibles: cajas de cartón, bolsas de plástico, trapos, productos de limpieza. Un foco de calor en ese espacio puede generar un incendio con gran volumen de humo que contamina todo el local.|El incendio intencionado en el exterior del local: los bares de {{CIUDAD}} con acceso exterior —terrazas, cortinas plásticas, mobiliario exterior— son vulnerables a incendios intencionados que pueden afectar al interior si no hay elementos cortafuegos adecuados.|El incendio en el sótano o en la zona de frío: los locales técnicos de los bares de {{CIUDAD}} —motores de las cámaras, instalación de gas, cuartos de limpieza— son focos de riesgo que, al estar lejos de la vista, pueden generar incendios que duran horas antes de ser detectados.}
+
+---
+
+{## La contaminación de un incendio en bar de {{CIUDAD}}: el problema específico de la hostelería de proximidad|## Lo que el hollín y el humo hacen en un bar de {{CIUDAD}}|## Por qué la limpieza de un bar quemado en {{CIUDAD}} no es igual que la de cualquier local}
+
+{El hollín de un incendio en un bar de {{CIUDAD}} tiene una carga grasa específica de la hostelería que lo hace mucho más adherente que el hollín convencional. Las paredes, la barra, el techo y el mobiliario del bar absorben ese hollín en profundidad y lo retienen con una tenacidad que los productos de limpieza ordinarios no pueden vencer.|El olor en un bar de {{CIUDAD}} después de un incendio es el mayor obstáculo para la reapertura. Un cliente que entra y huele a quemado no consume y no vuelve. La desodorización total del local es tan urgente como la limpieza visual, y en muchos casos más difícil de conseguir.|Las superficies características de un bar de {{CIUDAD}} —azulejos de cocina, encimeras de mármol o granito, barra de madera o resina, tapizados de sillas y taburetes— absorben el hollín y los compuestos orgánicos de la combustión de formas muy distintas, y cada una requiere una técnica de limpieza diferente.}
+
+{El stock de bebidas de un bar de {{CIUDAD}} expuesto al humo de un incendio puede estar contaminado de formas que no siempre son detectables a simple vista. Las botellas del expositor pueden haber absorbido olor a través del tapón. Las latas pueden estar deformadas por el calor. Los productos alimentarios perecederos son pérdida total automática.|La máquina de café de un bar de {{CIUDAD}} expuesta al humo puede tener contaminación interna que afecte al sabor del café servido. La limpieza técnica de los equipos de hostelería después de un incendio es un paso que no puede omitirse.|El sistema de frío de un bar de {{CIUDAD}} —cámaras frigoríficas, armarios refrigerados, cubetas de hielo— puede estar contaminado con compuestos del humo que se transferirán a las bebidas y los alimentos conservados después del siniestro.}
+
+---
+
+{## El protocolo de {{EMPRESA}} para bares de {{CIUDAD}}: de la barra al depósito de gas|## Cómo limpiamos un bar quemado en {{CIUDAD}}: proceso real|## Las fases de recuperación de un bar de {{CIUDAD}} tras un incendio}
+
+{La intervención de {{EMPRESA}} en un bar de {{CIUDAD}} sigue un protocolo específico para hostelería de proximidad:|En {{EMPRESA}} intervenimos en los bares de {{CIUDAD}} con un proceso orientado a un único objetivo: que el local vuelva a abrir en el menor tiempo posible, sin olor y con todos los equipos verificados:|La recuperación de un bar de {{CIUDAD}} tras un incendio tiene una secuencia que {{EMPRESA}} ha depurado en {{ANOS}} años de trabajo en el sector:}
+
+{Evaluación urgente del local: estado de la cocina, la barra, los equipos de hostelería y el stock. Identificación de lo recuperable y lo que debe declararse como pérdida. Informe inicial para la aseguradora de {{CIUDAD}}.|Limpieza de la cocina y del sistema de extracción: el paso más crítico. El conducto de humos del bar de {{CIUDAD}} con grasa acumulada es el principal factor de riesgo de recidiva del incendio. Limpiarlo correctamente no es solo limpiar el siniestro: es prevenir el siguiente.|Limpieza de la barra y el local: desengrase industrial de todas las superficies, tratamiento específico para cada tipo de material, limpieza de expositores, neveras y mobiliario recuperable.}
+
+{Limpieza técnica de los equipos de hostelería del bar de {{CIUDAD}}: máquina de café, lavavajillas, cámaras frigoríficas, tostadora, microondas. Cada equipo se evalúa y se limpia o se descarta. El resultado se documenta para la aseguradora.|Ozonización completa del bar de {{CIUDAD}}: el paso que elimina el olor a humo de forma definitiva. Sin él, el local puede estar visualmente impecable y seguir oliendo al siniestro. Con él, el cliente que entre no nota que ha habido un incendio.|Verificación final y certificación: el bar de {{CIUDAD}} está listo para la inspección de Sanidad de {{PROVINCIA}} y para la visita del perito de la aseguradora.}
+
+---
+
+{## El seguro de tu bar de {{CIUDAD}}: cobertura y gestión|## Cómo gestionar el seguro de tu bar tras el incendio|## Tu póliza de hostelería en {{CIUDAD}}: lo que cubre y cómo activarlo}
+
+{La póliza de seguro de tu bar en {{CIUDAD}} cubre en la mayoría de casos los daños materiales por incendio, la pérdida de menaje y stock y la pérdida de beneficios durante el cierre. La limpieza especializada está incluida en los daños materiales. El coste para el hostelero puede ser cero.|{{EMPRESA}} gestiona directamente la coordinación con el perito de la aseguradora en {{PROVINCIA}}, aportando el inventario técnico de daños y el informe de limpieza que necesitan para activar la cobertura en el menor tiempo posible.|Un informe técnico bien hecho desde el primer momento acelera la resolución del siniestro. Un siniestro sin documentación adecuada puede alargarse meses. En {{EMPRESA}} nos encargamos de que esto no pase en {{CIUDAD}}.}
+
+---
+
+{## Conclusión: tu bar de {{CIUDAD}} puede abrir antes de lo que crees|## Para terminar: cada día cerrado es un cliente que se va|## {{EMPRESA}} en {{CIUDAD}}: del incendio en el bar a la reapertura}
+
+{Un bar de {{CIUDAD}} que ha sufrido un incendio puede reabrir en días si la empresa de limpieza tiene el protocolo correcto para hostelería. En {{EMPRESA}} lo tenemos.|Llevamos {{ANOS}} años ayudando a hosteleros de {{CIUDAD}} a recuperar su local después de un incendio. La pregunta siempre es la misma: ¿cuándo puedo abrir? Y nuestra respuesta siempre es: antes de lo que crees.|Si tu bar en {{CIUDAD}} o {{PROVINCIA}} ha sufrido un incendio, llama a {{EMPRESA}} ahora. Valoración gratuita, respuesta urgente, reapertura lo antes posible.}
+
+☎ {{{TELEFONO}}|{{TELEFONO}} — disponible 24 horas|{{TELEFONO}}, urgencias en hostelería 24h}
+{{{EMAIL}}|{{EMAIL}}|Escríbenos a {{EMAIL}}}
+{Servicio urgente 24h / 365 días.|Disponibles las 24 horas, todos los días del año.|Respuesta inmediata.}
+{{{URL_BASE}}|{{URL_BASE}}}
+
+{{{EMPRESA}}. Desde {{DESDE}}. Especialistas en limpieza post-incendio en bares y locales de hostelería de {{CIUDAD}} y toda {{PROVINCIA}}.|{{EMPRESA}} — {{ANOS}} años recuperando bares quemados en {{CIUDAD}} y en toda España.|{{EMPRESA}}. Limpieza de incendios en bares de {{CIUDAD}} y {{PROVINCIA}} desde {{DESDE}}.}
