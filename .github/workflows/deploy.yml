@@ -1,0 +1,46 @@
+name: Deploy a FTP (limpiezaincendios.com)
+
+# Sube el sitio estático al hosting por FTP cuando hay cambios en main.
+# También se puede lanzar a mano desde la pestaña Actions ("Run workflow").
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ftp-deploy
+  cancel-in-progress: true
+
+jobs:
+  ftp-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Subir por FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
+          protocol: ftp
+          server-dir: /limpiezaincendios.com/public_html/
+          local-dir: ./
+          # No subir fuentes ni artefactos del generador (sí van robots.txt,
+          # sitemap.xml, favicon.ico, site.webmanifest, assets/ y el HTML).
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            **/node_modules/**
+            build_site.py
+            Spintax.txt
+            spintax-*.txt
+            extracted_docx_text.txt
+            datos para Galaxia.txt
+            validation-report.txt
+            README.md
+            *.png
+            docs/**

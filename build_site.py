@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Generador estático para Galaxia · Limpieza Técnica Post-Incendio.
+"""Generador estático para Galaxia · Limpieza de Incendios.
 
 El script crea una web HTML estática con URLs en directorios limpios, contenidos
 únicos deterministas, sitemap, robots, README y páginas estructurales.
@@ -8,7 +8,9 @@ No incorpora datos fiscales por indicación expresa del cliente.
 """
 from __future__ import annotations
 
+import datetime
 import html
+import hashlib
 import json
 import math
 import os
@@ -23,21 +25,26 @@ from typing import Dict, Iterable, List, Tuple
 ROOT = Path(__file__).resolve().parent
 ASSETS = ROOT / 'assets'
 IMG = ASSETS / 'img'
-DOMAIN = 'https://limpiezadeincendiosgalaxia.es'
-BRAND = 'Galaxia · Limpieza Técnica Post-Incendio'
+DOMAIN = 'https://limpiezaincendios.com'
+BRAND = 'Galaxia · Limpieza de Incendios'
 SHORT = 'Galaxia'
-TAGLINE = 'Tecnología industrial para grandes y pequeños siniestros'
+TAGLINE = 'Limpieza de incendios y limpieza post incendio con tecnología industrial'
 PHONE = '614 24 87 33'        # Display (SEO local, sin prefijo +34)
 PHONE_TEL = '+34614248733'    # E.164 para tel: y schemas
 WHATSAPP = '614 24 87 33'     # Display
 WHATSAPP_WA = '34614248733'   # Para wa.me (sin +)
-EMAIL = 'peritos@limpiezadeincendiosgalaxia.es'
+EMAIL = 'peritos@limpiezaincendios.com'
 # Email destino del formulario (FormSubmit). Se envía CON _subject explícito
-# para que el destinatario sepa que llega del sitio de Galaxia.
+# para que el destinatario sepa de qué sitio llega.
 FORMSUBMIT_EMAIL = 'info@limpiezasdeincendios.com'
 ADDRESS = 'C. de la Fuente del Rey, 12, Moncloa - Aravaca, 28023 Madrid'
 GBP = 'https://maps.app.goo.gl/adiBEYjzzPVDSZbp7'
-BASE_KEYWORD = 'limpieza de humo y hollín'
+# Keyword principal del sitio. Secundaria principal: "limpieza post incendio".
+BASE_KEYWORD = 'limpieza de incendios'
+SECONDARY_KEYWORD = 'limpieza post incendio'
+# Sal global para diferenciar las elecciones deterministas (spintax y choices)
+# respecto del sitio de origen y evitar contenido duplicado entre webs.
+SEED_SALT = 'lic-com-2026'
 
 # Delegaciones físicas. Una entrada por oficina. El teléfono y email son
 # centrales (compartidos). La dirección, ciudad y coordenadas son únicas
@@ -126,6 +133,8 @@ def delegation_local_business(d: dict) -> dict:
         'name': d['name'],
         'parentOrganization': {'@type': 'Organization', 'name': BRAND, 'url': DOMAIN},
         'url': DOMAIN,
+        'image': DOMAIN + '/assets/img/hero-industrial.jpg',
+        'priceRange': '€€',
         'telephone': PHONE_TEL,
         'email': EMAIL,
         'address': {
@@ -469,6 +478,14 @@ SERVICE_LABELS = {
     'restaurantes': 'restaurantes y cocinas profesionales',
     'salas-tecnicas': 'salas técnicas y CPD'
 }
+# Etiquetas cortas para los <title> (las largas truncan keyword/provincia).
+SERVICE_LABELS_SHORT = {
+    'bares': 'bares', 'bodegas': 'bodegas', 'centros-sanitarios': 'centros sanitarios',
+    'colegios': 'colegios', 'comercios': 'comercios', 'comunidades': 'comunidades',
+    'garajes': 'garajes', 'hoteles': 'hoteles', 'naves': 'naves industriales',
+    'oficinas': 'oficinas', 'residencias': 'residencias', 'restaurantes': 'restaurantes',
+    'salas-tecnicas': 'salas técnicas',
+}
 SPINTAX_FILES = {
     'residencias': 'spintax-01-residencias-mayores.txt',
     'naves': 'spintax-02-naves-industriales.txt',
@@ -592,30 +609,35 @@ def rel_prefix(url: str) -> str:
 
 
 def deterministic_choice(options: List[str], seed: str) -> str:
-    r = random.Random(seed)
+    r = random.Random(str(seed) + SEED_SALT)
     return r.choice(options)
 
 
+def pick_n(options: List[str], n: int, seed: str) -> List[str]:
+    """Selección determinista de n elementos distintos (reproducible)."""
+    r = random.Random(str(seed) + SEED_SALT)
+    return r.sample(options, min(n, len(options)))
+
+
+def dhash(s: str) -> int:
+    """Hash entero estable y reproducible entre ejecuciones (a diferencia de
+    hash() builtin, que Python aleatoriza por proceso vía PYTHONHASHSEED)."""
+    return int.from_bytes(hashlib.md5((str(s) + SEED_SALT).encode()).digest()[:8], 'big')
+
+
 def resolve_spintax(text: str, seed: int) -> str:
-    r = random.Random(seed)
-    def repl_once(s: str) -> Tuple[str, bool]:
-        start = s.rfind('{')
-        if start == -1:
-            return s, False
-        end = s.find('}', start)
-        if end == -1:
-            return s, False
-        body = s[start+1:end]
-        parts = body.split('|')
-        return s[:start] + r.choice(parts).strip() + s[end+1:], True
-    changed = True
-    loops = 0
-    while changed and loops < 50000:
-        text, changed = repl_once(text)
-        loops += 1
-    # Si algún bloque complejo queda sin resolver por formato irregular, se elimina
-    # de forma conservadora para no publicar llaves ni pipes visibles.
-    text = re.sub(r'\{[^{}<>]{0,500}\|[^{}<>]{0,500}\}', '', text)
+    r = random.Random(str(seed) + SEED_SALT)
+    # Resuelve siempre el grupo MÁS INTERNO ({...} sin llaves anidadas dentro),
+    # de izquierda a derecha. Es inmune a llaves huérfanas (una '{' sin '}' no
+    # casa el patrón y no detiene la resolución del resto del texto).
+    pattern = re.compile(r'\{([^{}]*)\}')
+    for _ in range(50000):
+        m = pattern.search(text)
+        if not m:
+            break
+        choice = r.choice(m.group(1).split('|')).strip()
+        text = text[:m.start()] + choice + text[m.end():]
+    # Limpieza conservadora de cualquier llave/pipe residual (llaves sin pareja).
     text = text.replace('{', '').replace('}', '').replace('|', ' ')
     return text
 
@@ -624,14 +646,43 @@ def words(text: str) -> int:
     return len(re.findall(r'\b\w+\b', text))
 
 
+# Valores con los que se rellenan los placeholders {{...}} globales de los
+# ficheros spintax de servicio. Los específicos de ubicación ({{CIUDAD}},
+# {{PROVINCIA}}, {{SLUG}}…) se sustituyen en landing_copy, donde se conoce
+# la ciudad/provincia concreta.
+SPINTAX_GLOBALS = {
+    'EMPRESA': SHORT,
+    'TELEFONO': PHONE,
+    'TEL_PLANO': PHONE_TEL.replace('+34', ''),
+    'EMAIL': EMAIL,
+    'URL_BASE': DOMAIN,
+    'DOMINIO': DOMAIN.replace('https://', '').replace('http://', ''),
+    'ANOS': '20',
+    'DESDE': '2005',
+}
+
+
 def read_spintax_for(service: str | None = None) -> str:
     path = ROOT / (SPINTAX_FILES.get(service, 'Spintax.txt') if service else 'Spintax.txt')
     if not path.exists():
         path = ROOT / 'Spintax.txt'
     text = path.read_text(encoding='utf-8', errors='ignore')
+    # Recortar el preámbulo de instrucciones (%%INSTRUCCIONES%% … FIN DE
+    # INSTRUCCIONES) para que no se filtre a las páginas publicadas.
+    marker = re.search(r'FIN DE INSTRUCCIONES[^\n]*\n', text)
+    if marker:
+        text = text[marker.end():]
     text = re.sub(r'✅|🔥|⚠️|={3,}|─{3,}', '', text)
+    # Sustituir placeholders globales (admite {{VAR}} y la variante {{{VAR}}).
+    for key, value in SPINTAX_GLOBALS.items():
+        text = text.replace('{{{' + key + '}}', value).replace('{{' + key + '}}', value)
     text = text.replace('[EMPRESA]', SHORT).replace('Limpieza PostIncendio', SHORT)
-    return text[:9000]
+    text = text[:9000]
+    # Evita dejar una llave de apertura sin cierre tras el corte a 9000 car.
+    # (causaba que el resolutor abortara y se vaciaran los grupos spintax).
+    if text.count('{') > text.count('}'):
+        text = text[:text.rfind('{')]
+    return text
 
 
 # Perfiles de ciudades importantes para inyectar contenido único y humano
@@ -1009,22 +1060,22 @@ CITY_PROFILES = {
 TESTIMONIALS = [
     {'author': 'María R.', 'role': 'Administradora de fincas · Madrid',
      'rating': 5, 'date': '2026-02-14',
-     'text': 'Intervinieron en una comunidad nuestra tras un incendio en el cuarto de contadores. El portal quedó perfecto en 48 horas y nos entregaron informe técnico que la aseguradora aceptó sin discusión.'},
+     'text': 'Tras un incendio en el cuarto de contadores de una de nuestras comunidades, dejaron el portal impecable en 48 horas. El informe técnico que entregaron lo aceptó la aseguradora sin una sola objeción.'},
     {'author': 'Jordi M.', 'role': 'Director de operaciones · Hotel Barcelona',
      'rating': 5, 'date': '2025-11-09',
-     'text': 'Trabajaron de noche para no parar el hotel. En 5 días teníamos las 84 habitaciones desodorizadas y sin una sola queja de huéspedes. Profesionales de verdad.'},
+     'text': 'Organizaron los turnos de noche para no cerrar el hotel. En cinco días las 84 habitaciones estaban desodorizadas y no recibimos ni una queja de los huéspedes. Un equipo serio.'},
     {'author': 'Ana L.', 'role': 'Perita de seguros · Andalucía',
      'rating': 5, 'date': '2026-01-22',
-     'text': 'Llevo seis siniestros con ellos. Documentación pericial impecable, fotografías, alcance, fases ejecutadas. Te hacen el trabajo fácil al perito.'},
+     'text': 'Ya he gestionado seis siniestros con ellos. La documentación pericial es impecable: fotografías, alcance y fases ejecutadas. Como perita, me simplifican mucho el trabajo.'},
     {'author': 'Pablo G.', 'role': 'Jefe de mantenimiento · Residencia Valencia',
      'rating': 5, 'date': '2025-09-30',
-     'text': 'Un fuego en lavandería con 40 residentes en planta. Trabajaron con presión negativa y no tuvimos que trasladar a nadie. Calidad de aire restaurada en 36 horas.'},
+     'text': 'Tuvimos fuego en la lavandería con 40 residentes en la planta. Trabajaron con presión negativa y no hizo falta trasladar a nadie. En 36 horas la calidad del aire estaba recuperada.'},
     {'author': 'Carmen V.', 'role': 'Directora de colegio · Toledo',
      'rating': 5, 'date': '2026-03-04',
-     'text': 'Incendio en sala de informática un viernes. El lunes a las 8 abríamos con certificación técnica para la inspección educativa. Imposible mejor.'},
+     'text': 'Un viernes ardió la sala de informática. El lunes a las 8 abríamos con la certificación técnica lista para la inspección educativa. No se les puede pedir más.'},
     {'author': 'Iván P.', 'role': 'Responsable logística · Nave Murcia',
      'rating': 5, 'date': '2025-12-18',
-     'text': '2.000 m² de nave con hollín en toda la estructura metálica. En 72 horas todo estabilizado y la operativa de la nave reanudada sin extender la parada.'},
+     'text': 'Teníamos 2.000 m² de nave con hollín en toda la estructura metálica. En 72 horas estaba todo estabilizado y la nave volvió a operar sin alargar la parada.'},
 ]
 
 
@@ -1075,48 +1126,45 @@ def featured_snippet_block(label: str, service: str | None = None) -> str:
 
     # Párrafo principal (respuesta directa, 40-50 palabras)
     snippet_answer = (
-        f'Sí. En {label}, ofrecemos limpieza técnica post-incendio con HEPA H14, '
-        f'ozono y desodorización profesional. Respuesta 24/7 en {PHONE}. '
-        f'Documentación pericial incluida. El tiempo crítico es 24-72 horas antes de que '
-        f'el hollín se fije irreversiblemente en superficies.'
+        f'Sí. En {label} hacemos limpieza de incendios y limpieza post incendio '
+        f'con filtración HEPA H14, ozono y desodorización profesional. Atención '
+        f'24/7 en el {PHONE} y documentación pericial incluida. La ventana crítica '
+        f'son las primeras 24-72 horas, antes de que el hollín se fije de forma '
+        f'irreversible en las superficies.'
     )
 
-    # Formato 1: Párrafo directo
-    para_format = f"""<div class='featured-snippet' itemscope itemtype='https://schema.org/FAQPage'>
-    <h3 itemprop='name'>¿Necesitas una Limpieza por Incendios en {esc(label)}?</h3>
-    <p itemprop='description'>{esc(snippet_answer)}</p>
+    # Formato 1: Párrafo directo (HTML plano; el FAQ estructurado va por JSON-LD,
+    # no por microdata, para no duplicar/malformar FAQPage).
+    para_format = f"""<div class='featured-snippet'>
+    <h2>¿Necesitas una limpieza de incendios en {esc(label)}?</h2>
+    <p>{esc(snippet_answer)}</p>
     </div>"""
 
-    # Formato 2: Lista de pasos (How-To Schema)
-    steps_format = f"""<div class='featured-snippet steps-format' itemscope itemtype='https://schema.org/HowTo'>
-    <h3 itemprop='name'>Proceso de Limpieza Post-Incendio en {esc(label)}</h3>
+    # Formato 2: Lista de pasos (HTML plano; HowTo está deprecado en Google).
+    steps_format = f"""<div class='featured-snippet steps-format'>
+    <h2>Proceso de limpieza post incendio en {esc(label)}</h2>
     <ol class='snippet-steps'>
-        <li itemprop='step' itemscope itemtype='https://schema.org/HowToStep'>
-            <strong itemprop='name'>1. Inspección técnica</strong>
-            <span itemprop='text'>Evaluamos daño, accesos, ventilación y riesgos en {label}.</span>
+        <li><strong>1. Inspección técnica</strong>
+            <span>Evaluamos daño, accesos, ventilación y riesgos en {label}.</span>
         </li>
-        <li itemprop='step' itemscope itemtype='https://schema.org/HowToStep'>
-            <strong itemprop='name'>2. Contención y protección</strong>
-            <span itemprop='text'>Sectorización de zonas no afectadas con cortinas de presión.</span>
+        <li><strong>2. Contención y protección</strong>
+            <span>Sectorización de zonas no afectadas con cortinas de presión.</span>
         </li>
-        <li itemprop='step' itemscope itemtype='https://schema.org/HowToStep'>
-            <strong itemprop='name'>3. Retirada de residuos</strong>
-            <span itemprop='text'>Aspiración HEPA H14, hielo seco o láser según superficie.</span>
+        <li><strong>3. Retirada de residuos</strong>
+            <span>Aspiración HEPA H14, hielo seco o láser según superficie.</span>
         </li>
-        <li itemprop='step' itemscope itemtype='https://schema.org/HowToStep'>
-            <strong itemprop='name'>4. Desodorización</strong>
-            <span itemprop='text'>Ozono industrial, fogging o neutralización de pH.</span>
+        <li><strong>4. Desodorización</strong>
+            <span>Ozono industrial, fogging o neutralización de pH.</span>
         </li>
-        <li itemprop='step' itemscope itemtype='https://schema.org/HowToStep'>
-            <strong itemprop='name'>5. Informe pericial</strong>
-            <span itemprop='text'>Documentación técnica con fotografías y alcance ejecutado.</span>
+        <li><strong>5. Informe pericial</strong>
+            <span>Documentación técnica con fotografías y alcance ejecutado.</span>
         </li>
     </ol>
     </div>"""
 
-    # Formato 3: Tabla comparativa (Services)
+    # Formato 3: Tabla comparativa
     table_format = f"""<div class='featured-snippet table-format'>
-    <h3>Métodos de Limpieza Post-Incendio en {esc(label)}</h3>
+    <h2>Métodos de limpieza de incendios en {esc(label)}</h2>
     <table class='snippet-table' border='1'>
         <thead>
             <tr>
@@ -1152,7 +1200,7 @@ def featured_snippet_block(label: str, service: str | None = None) -> str:
 
     # Rotar formato según hash del label para variación
     formats = [para_format, steps_format, table_format]
-    choice_idx = abs(hash(label)) % len(formats)
+    choice_idx = dhash(label) % len(formats)
     return formats[choice_idx]
 
 
@@ -1162,44 +1210,89 @@ def city_profile_paragraphs(slug: str, label: str) -> str:
     landing principal (item 8 del backlog)."""
     p = CITY_PROFILES.get(slug)
     if not p:
-        return ''
+        # Perfil genérico para ciudades sin ficha propia: contenido único por
+        # ciudad a partir de las señales deterministas de local_context.
+        loc = local_context(slug)
+        g_h2 = deterministic_choice([
+            f"Limpieza de incendios en {label} y su entorno",
+            f"Cómo intervenimos tras un incendio en {label}",
+            f"Servicio de limpieza post incendio en {label}",
+            f"Qué tener en cuenta tras un incendio en {label}",
+        ], slug + 'gp-h2')
+        g_h3 = deterministic_choice([
+            f"Nuestro método en {label}",
+            f"De la llamada a la entrega del informe en {label}",
+            f"Cómo organizamos el servicio en {label}",
+        ], slug + 'gp-h3')
+        return (
+            f"<h2>{g_h2}</h2>"
+            f"<p>En {label} intervenimos en inmuebles vinculados a {loc['industrial']}, "
+            f"donde cada hora parado por humo u hollín tiene un coste directo. Tras un "
+            f"incendio, lo primero es estabilizar la zona, contener las partículas y "
+            f"separar el hollín graso del seco para decidir la técnica correcta sin "
+            f"arrastrar contaminación a zonas limpias.</p>"
+            f"<p>Los siniestros más frecuentes en {label} se relacionan con {loc['risk']}. "
+            f"Por eso la inspección inicial valora la carga de hollín, hasta dónde ha "
+            f"llegado el humo por conductos y huecos, el riesgo residual y la "
+            f"compatibilidad con la actividad del inmueble. Cuando el siniestro lo exige, "
+            f"nos coordinamos con {loc['fire']}.</p>"
+            f"<h3>{g_h3}</h3>"
+            f"<p>Reservamos una ventana de visita técnica de {loc['hours']} según los "
+            f"accesos y el nivel de contaminación. A partir de ahí dimensionamos personal, "
+            f"maquinaria HEPA H14, ozono o hidroxilo cuando el espacio lo admite, hielo "
+            f"seco para superficies carbonizadas y EPI categoría III si hace falta. El "
+            f"trabajo se entrega con informe técnico —fases, fotografías de antes y "
+            f"después y materiales tratados— para que los gremios posteriores y la "
+            f"aseguradora trabajen sobre una base clara. En {label} no reformamos ni "
+            f"reparamos: nuestra parte es la limpieza de incendios y la descontaminación.</p>"
+        )
+    h_zonas = deterministic_choice([
+        f"Zonas y particularidades de {label}",
+        f"Cómo es {label} y qué implica tras un incendio",
+        f"{label} barrio a barrio: dónde intervenimos",
+        f"El parque inmobiliario de {label} ante un siniestro",
+    ], slug + 'cp-h2')
+    h_plan = deterministic_choice([
+        f"Cómo planificamos el servicio en {label}",
+        f"Nuestro método para un siniestro en {label}",
+        f"De la visita técnica al inmueble recuperado en {label}",
+        f"Paso a paso de una intervención en {label}",
+    ], slug + 'cp-h3')
     return (
-        f"<h2>Zonas y particularidades de {label}</h2>"
-        f"<p>{label} tiene una distribución urbana muy específica que condiciona "
-        f"cualquier intervención post-incendio. Trabajamos en {p['zonas']}, "
-        f"cubriendo desde el centro hasta los barrios periféricos. La arquitectura "
-        f"dominante son {p['arch']}, lo que obliga a adaptar protocolos de "
-        f"contención y filtración según el tipo de patio interior, los conductos "
-        f"de ventilación y la accesibilidad del portal.</p>"
-        f"<p>El tejido económico de {label} concentra {p['ind']}, sectores donde "
-        f"cada hora de cierre por humo o hollín tiene un coste directo. Por eso "
-        f"la prioridad es estabilizar la zona afectada, retirar el residuo "
-        f"carbonizado y devolver el espacio en condiciones operativas sin "
-        f"comprometer la trazabilidad para la peritación. Los riesgos más "
-        f"frecuentes en {label} son {p['risk']}, que requieren equipos "
-        f"especializados y experiencia previa en el sector.</p>"
-        f"<h3>Cómo planificamos una intervención en {label}</h3>"
-        f"<p>Cada siniestro empieza con una visita técnica para evaluar el "
-        f"alcance real del daño: superficie afectada, carga de hollín, "
-        f"penetración del humo en conductos y zonas no visibles, riesgo "
-        f"residual y compatibilidad con la actividad del inmueble. En {label} "
-        f"valoramos también la accesibilidad de las calles del barrio, la "
-        f"posibilidad de carga y descarga, los horarios de menor afectación "
-        f"para vecinos o usuarios y la coordinación con el perito designado "
-        f"por la aseguradora. A partir de ahí dimensionamos personal, "
-        f"maquinaria HEPA H14, ozono o hidroxilo cuando el espacio lo "
-        f"permite, hielo seco para superficies carbonizadas y EPI categoría "
-        f"III cuando la evaluación lo exige.</p>"
+        f"<h2>{h_zonas}</h2>"
+        f"<p>La trama urbana de {label} es muy concreta y condiciona cualquier "
+        f"trabajo de limpieza de incendios. Intervenimos en {p['zonas']}, "
+        f"desde el centro hasta los barrios de la periferia. Como predominan "
+        f"{p['arch']}, adaptamos los protocolos de contención y filtración al "
+        f"tipo de patio interior, a los conductos de ventilación y a la "
+        f"accesibilidad de cada portal.</p>"
+        f"<p>La economía de {label} se apoya en {p['ind']}, sectores en los que "
+        f"cada hora cerrado por humo o hollín cuesta dinero de forma directa. De "
+        f"ahí que lo primero sea estabilizar la zona afectada, retirar el residuo "
+        f"carbonizado y devolver el espacio operativo sin perder la trazabilidad "
+        f"que necesita la peritación. Los riesgos más repetidos en {label} son "
+        f"{p['risk']}, que piden equipos especializados y experiencia previa en "
+        f"este tipo de siniestros.</p>"
+        f"<h3>{h_plan}</h3>"
+        f"<p>Todo arranca con una visita técnica que mide el alcance real del "
+        f"daño: superficie afectada, carga de hollín, hasta dónde ha entrado el "
+        f"humo en conductos y zonas ocultas, riesgo residual y compatibilidad "
+        f"con la actividad del inmueble. En {label} valoramos además cómo son "
+        f"los accesos del barrio, las opciones de carga y descarga, las franjas "
+        f"horarias que menos molestan a vecinos o usuarios y la coordinación con "
+        f"el perito que designe la aseguradora. Con esos datos dimensionamos "
+        f"personal, maquinaria HEPA H14, ozono o hidroxilo cuando el espacio lo "
+        f"admite, hielo seco para superficies carbonizadas y EPI categoría III "
+        f"si la evaluación lo exige.</p>"
         f"<p>El trabajo se entrega siempre con informe técnico completo: "
         f"fases ejecutadas, fotografías de antes y después, materiales "
-        f"tratados, equipos utilizados y recomendaciones para los siguientes "
-        f"gremios. En {label} esto es especialmente importante porque la "
-        f"empresa de obras posterior —pintura, electricidad, instalaciones, "
-        f"albañilería— necesita un punto de partida claro y documentado para "
-        f"trabajar sobre un espacio limpio y descontaminado. Galaxia no "
-        f"reforma ni repara: nuestra parte es la limpieza técnica y la "
-        f"descontaminación; las obras posteriores las ejecutan las empresas "
-        f"que designe la aseguradora.</p>"
+        f"tratados, equipos empleados y recomendaciones para los gremios que "
+        f"vienen después. En {label} esto pesa mucho, porque la empresa de "
+        f"obras posterior —pintura, electricidad, instalaciones, albañilería— "
+        f"necesita un punto de partida claro y documentado sobre un espacio ya "
+        f"limpio y descontaminado. Galaxia no reforma ni repara: nuestra parte "
+        f"es la limpieza de incendios y la descontaminación; la reconstrucción "
+        f"la ejecutan las empresas que designe la aseguradora.</p>"
     )
 
 
@@ -1238,38 +1331,92 @@ def landing_copy(city_or_province: str, service: str | None, seed: int) -> str:
     loc = local_context(city_or_province)
     label = loc['label']
     service_text = SERVICE_LABELS.get(service, 'instalaciones industriales, comercios y edificios afectados')
+    # Término limpio para encabezados (el fallback de service_text acaba en
+    # "afectados" y genera concordancias duplicadas si se le añade un sufijo).
+    service_head = SERVICE_LABELS.get(service, 'viviendas, locales y naves')
     base = read_spintax_for(service)
+    # Placeholders de ubicación de los ficheros spintax de servicio.
+    prov_slug = city_or_province if service else CITY_PROVINCE.get(city_or_province, city_or_province)
+    province_label = slug_title(prov_slug)
+    page_slug = f'limpieza-incendios-{service}-{city_or_province}' if service else f'limpieza-incendios-{city_or_province}'
+    base = (base
+            .replace('{{{CIUDAD}}', label).replace('{{CIUDAD_MIN}}', label.lower())
+            .replace('{{CIUDAD}}', label)
+            .replace('{{PROVINCIA}}', province_label)
+            .replace('{{SLUG}}', page_slug))
     base = base.replace('[CIUDAD]', label).replace('limpieza de incendios', BASE_KEYWORD).replace('Limpieza de Incendios', BASE_KEYWORD.capitalize())
     spun = resolve_spintax(base, seed)
+    # Encabezados diversificados (long-tail/secundarias) elegidos de forma
+    # determinista por página: evita repetir la keyword principal en todos los
+    # H2 (anti-sobreoptimización) y capta otras búsquedas (anti-canibalización).
+    h_service = deterministic_choice([
+        f"Protocolo de limpieza post incendio para {service_head} en {label}",
+        f"Cómo limpiamos {service_head} tras un incendio en {label}",
+        f"Saneamiento y retirada de hollín en {service_head} ({label})",
+        f"Recuperación de {service_head} tras el fuego en {label}",
+        f"Descontaminación de {service_head} tras incendio en {label}",
+    ], page_slug + 'h-svc')
+    h_local = deterministic_choice([
+        f"Coordinación del servicio tras incendio en {label}",
+        f"Urgencias por incendio en {label}: así actuamos",
+        f"Tiempos de respuesta y visita técnica en {label}",
+        f"Cómo organizamos la intervención en {label}",
+        f"Logística de la limpieza tras incendio en {label}",
+    ], page_slug + 'h-loc')
+    h_faq = deterministic_choice([
+        f"Preguntas frecuentes sobre limpieza tras incendio en {label}",
+        f"Dudas habituales tras un incendio en {label}",
+        f"Hollín, humo y olores: preguntas frecuentes en {label}",
+        f"Lo que más preguntan en {label} sobre el siniestro",
+        f"Resolvemos tus dudas sobre el incendio en {label}",
+    ], page_slug + 'h-faq')
+    h_quality = deterministic_choice([
+        f"Control de calidad y trazabilidad en {label}",
+        f"Cómo verificamos que el inmueble queda limpio en {label}",
+        f"Garantía de resultado y documentación en {label}",
+        f"Verificación final del trabajo en {label}",
+    ], page_slug + 'h-qua')
     intro = f"""
-    <p>En {label}, Galaxia interviene en <strong>{BASE_KEYWORD}</strong> con criterios de descontaminación post-incendio, control documental y planificación orientada a continuidad operativa. El servicio está diseñado para peritos, administradores de activos, responsables de mantenimiento y direcciones de operaciones que necesitan una respuesta verificable, no una limpieza genérica.</p>
-    <p>La zona presenta actividad vinculada a {loc['industrial']} y escenarios habituales de riesgo en {loc['risk']}. Por eso la inspección inicial diferencia hollín graso, partículas secas, residuos de combustión, olor persistente y afectación de climatización. Desde la sede de Madrid, el desplazamiento técnico estimado se organiza sobre una distancia operativa de {loc['distance']} km y se coordina con {loc['fire']} cuando el siniestro lo requiere.</p>
+    <p>Galaxia es la empresa de <strong>{BASE_KEYWORD}</strong> en {label}: realizamos {SECONDARY_KEYWORD}, descontaminación de humo y hollín, control documental y planificación orientada a que el inmueble vuelva a estar operativo cuanto antes. Es un servicio pensado para peritos, administradores de activos, responsables de mantenimiento y direcciones de operaciones que buscan una respuesta verificable y trazable, no una limpieza convencional.</p>
+    <p>El entorno de {label} concentra actividad ligada a {loc['industrial']} y escenarios de riesgo habituales en {loc['risk']}. Por eso la primera inspección separa el hollín graso de las partículas secas, los residuos de combustión, el olor que persiste y la afectación a los sistemas de climatización. El desplazamiento técnico se planifica sobre una distancia operativa estimada de {loc['distance']} km y se coordina con {loc['fire']} cuando el siniestro lo exige.</p>
     """
     service_block = f"""
-    <h2>Protocolo técnico para {service_text} en {label}</h2>
-    <p>El trabajo se estructura en cinco fases: contención de zona, lectura de superficies, retirada de residuo carbonizado, desodorización industrial y verificación final. En cada fase se documentan incidencias, fotografías de avance, materiales tratados y criterios de seguridad. La prioridad es reducir partículas, estabilizar olores y devolver el inmueble a un estado controlable para reparación, peritación o reapertura.</p>
-    <p>Cuando el siniestro afecta a {service_text}, los equipos pueden combinar filtración HEPA H14, aspiración controlada, limpieza por hielo seco CO₂, fogging térmico, ozono industrial y neutralización de pH en superficies compatibles. La selección se realiza tras prueba en zona no visible para evitar migración de hollín, veladuras o daños secundarios.</p>
+    <h2>{h_service}</h2>
+    <p>Cada intervención se ordena en cinco fases: contención de la zona, lectura de superficies, retirada del residuo carbonizado, desodorización industrial y verificación final. En todas ellas dejamos constancia de incidencias, fotografías de avance, materiales tratados y criterios de seguridad. El objetivo es bajar la carga de partículas, neutralizar olores y dejar el inmueble en un estado controlable para reparar, peritar o reabrir.</p>
+    <p>Si el siniestro afecta a {service_text}, combinamos según el caso filtración HEPA H14, aspiración controlada, limpieza con hielo seco CO₂, fogging térmico, ozono industrial y neutralización de pH sobre superficies compatibles. La técnica se decide siempre tras una prueba en zona no visible, para no arrastrar hollín ni provocar veladuras o daños secundarios.</p>
     """
     spun_html = paragraphize(spun)
     local_extra = f"""
-    <h2>Señales locales y coordinación operativa</h2>
-    <p>Para intervenciones en {label}, se reserva una ventana de visita de {loc['hours']} según accesos, disponibilidad de suministro, autorización pericial y nivel de contaminación. Se priorizan inmuebles con actividad económica, zonas comunes críticas, salas técnicas y espacios donde la parada operativa incremente el coste del siniestro.</p>
-    <p>La actuación se entrega con resumen técnico, relación de zonas tratadas y recomendaciones para siguientes gremios. Si existe aseguradora, el equipo puede preparar información compatible con gestión de siniestros, incluyendo fotografías, alcance, fases ejecutadas y observaciones relevantes.</p>
+    <h2>{h_local}</h2>
+    <p>En {label} reservamos una ventana de visita de {loc['hours']} en función de los accesos, la disponibilidad de suministro, la autorización pericial y el nivel de contaminación. Damos prioridad a inmuebles con actividad económica, zonas comunes críticas, salas técnicas y espacios donde cada día de parada encarece el siniestro.</p>
+    <p>El trabajo se cierra con un resumen técnico, la relación de zonas tratadas y recomendaciones para los gremios que entran después. Cuando hay aseguradora de por medio, preparamos información lista para la gestión del siniestro: fotografías, alcance, fases ejecutadas y observaciones relevantes.</p>
     """
+    faq_pool = [
+        ('¿La limpieza de incendios elimina también el olor a humo?', 'Sí, pero hay que combinar retirada del residuo, filtración y tratamiento molecular. Si se aplica ozono o fogging sin retirar antes la carga de hollín, el olor termina reapareciendo.'),
+        ('¿Se puede empezar la limpieza post incendio antes de cerrar la peritación?', 'Lo habitual es documentar primero el estado inicial y coordinar las autorizaciones. Galaxia organiza una visita técnica para delimitar daños sin comprometer la trazabilidad del siniestro.'),
+        ('¿Trabajan en horario de urgencia?', 'Sí. La respuesta 24/7 se centra en estabilizar, contener las partículas, evaluar los accesos y planificar la recuperación del inmueble.'),
+        (f'¿Cuánto cuesta una limpieza de incendios en {label}?', 'No damos precios cerrados por teléfono: cada siniestro depende de superficie, carga de hollín, accesos y ventilación. Tras la visita técnica entregamos un presupuesto detallado.'),
+        ('¿El humo y el hollín pueden dañar la instalación eléctrica?', 'Sí. El hollín es conductor y corrosivo; por eso aislamos cuadros y equipos, y recomendamos revisión eléctrica antes de volver a dar tensión a las zonas afectadas.'),
+        ('¿Retiráis también los muebles y enseres quemados?', 'Gestionamos la retirada y segregación de residuos de combustión. Lo que es recuperable se limpia y desodoriza; lo que no, se retira documentado para la peritación.'),
+        (f'¿En cuánto tiempo podéis intervenir en {label}?', f'Coordinamos la visita técnica en horas. En {label} priorizamos los siniestros con actividad económica o riesgo para terceros y planificamos la intervención por fases.'),
+        ('¿Trabajáis con mi compañía de seguros?', 'Sí. Preparamos informe técnico con fotografías, alcance y fases ejecutadas, compatible con la gestión del siniestro por parte del perito y la aseguradora.'),
+    ]
+    faq_items = ''.join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in pick_n(faq_pool, 4, page_slug + 'faqset'))
     faq = f"""
-    <h2>Preguntas técnicas frecuentes en {label}</h2>
-    <div class='faq'>
-      <details><summary>¿La limpieza de humo y hollín elimina también el olor?</summary><p>La eliminación del olor exige combinar retirada de residuo, filtración y tratamiento molecular. Si se aplica ozono o fogging sin limpiar la carga de hollín, el olor puede reaparecer.</p></details>
-      <details><summary>¿Se puede intervenir antes de cerrar la peritación?</summary><p>Normalmente se recomienda documentar el estado inicial y coordinar autorizaciones. Galaxia puede preparar una visita técnica para delimitar daños sin comprometer la trazabilidad.</p></details>
-      <details><summary>¿Trabajan en horario urgente?</summary><p>Sí. La respuesta 24/7 se enfoca a estabilización, contención de partículas, evaluación de accesos y planificación de recuperación.</p></details>
-    </div>
+    <h2>{h_faq}</h2>
+    <div class='faq'>{faq_items}</div>
     """
-    combined = intro + service_block + spun_html + local_extra + faq
+    # Reordenado determinista de los bloques centrales para romper el patrón
+    # estructural respecto al sitio de origen (intro siempre primero, FAQ al final).
+    middles = [service_block, spun_html, local_extra]
+    perms = [(0, 1, 2), (1, 0, 2), (0, 2, 1), (2, 0, 1), (1, 2, 0), (2, 1, 0)]
+    order = perms[int(deterministic_choice([str(i) for i in range(len(perms))], page_slug + 'order'))]
+    combined = intro + ''.join(middles[i] for i in order) + faq
     if words(re.sub('<[^<]+?>', ' ', combined)) < 600:
         combined += f"""
-        <h2>Criterios de calidad y trazabilidad</h2>
-        <p>La descontaminación post-incendio no debe medirse solo por apariencia visual. En {label} se revisan zonas de deposición secundaria, juntas, rejillas, retornos de aire, paramentos altos y recorridos de humo. Este método evita que el inmueble parezca recuperado mientras mantiene partículas activas, olor residual o contaminación desplazada a zonas no inspeccionadas.</p>
-        <p>El equipo trabaja con EPI categoría III cuando la evaluación lo exige, protección respiratoria, aspiración filtrada y segregación de residuos. La visita técnica permite dimensionar personal, maquinaria, consumibles, turnos de trabajo y necesidad de coordinación con electricidad, climatización, albañilería o pintura técnica.</p>
+        <h2>{h_quality}</h2>
+        <p>Una limpieza post incendio no puede medirse solo por el aspecto visual. En {label} revisamos las zonas de deposición secundaria, juntas, rejillas, retornos de aire, paramentos altos y los recorridos que ha seguido el humo. Así evitamos que el inmueble parezca recuperado mientras conserva partículas activas, olor residual o contaminación desplazada a zonas que nadie ha inspeccionado.</p>
+        <p>Cuando la evaluación lo pide, el equipo trabaja con EPI categoría III, protección respiratoria, aspiración filtrada y segregación de residuos. La visita técnica es la que permite dimensionar personal, maquinaria, consumibles, turnos y la coordinación posterior con electricidad, climatización, albañilería o pintura técnica.</p>
         """
     return combined
 
@@ -1300,17 +1447,27 @@ def common_footer(prefix: str) -> str:
       <div><h4>Contacto</h4><a href='tel:{phone_clean}'>{PHONE}</a><a href='https://wa.me/{whatsapp_clean}'>WhatsApp técnico</a><a href='mailto:{EMAIL}'>{EMAIL}</a><a href='{prefix}privacidad/'>Privacidad</a><a href='{prefix}cookies/'>Cookies</a><a href='{prefix}aviso-legal/'>Aviso legal</a></div>
         </div>
       <div class='footer-meta'><small>Galaxia forma parte del <a href='{DOMAIN}' rel='noopener'>Grupo Limpieza de Incendios Galaxia</a> · &copy; {BRAND}</small></div>
-      </footer><script>{JS}</script>
+      </footer><script defer src='{prefix}assets/app.js'></script>
     """
 
 
-def callback_form(prefix: str, location: str = '') -> str:
+def callback_form(prefix: str, location: str = '', variant: str = 'top') -> str:
     place_value = esc(location)
+    # Dos instancias por landing con copy distinto; solo la superior lleva <h2>
+    # (la inferior usa un encabezado no semántico) para no duplicar el H2.
+    if variant == 'top':
+        eyebrow = 'Nosotros te llamamos'
+        heading = "<h2>Te llamamos para valorar tu incendio</h2>"
+        lead = 'Déjanos tu nombre, teléfono y población y te llamamos para valorar el siniestro y orientar los siguientes pasos.'
+    else:
+        eyebrow = 'Solicita tu valoración'
+        heading = "<p class='cta-head'>¿Hablamos? Te llamamos en minutos</p>"
+        lead = 'Cuéntanos qué ha pasado y dónde: coordinamos la visita técnica y los siguientes pasos del siniestro.'
     return f"""
-    <section class='panel hero-copy'>
-      <div class='eyebrow'>Nosotros te llamamos</div>
-      <h2>Nosotros te llamamos</h2>
-      <p>Déjanos tu nombre, teléfono y población y te llamamos para valorar el siniestro y orientar los siguientes pasos.</p>
+    <section class='panel hero-copy' aria-label='Formulario de contacto'>
+      <div class='eyebrow'>{eyebrow}</div>
+      {heading}
+      <p>{lead}</p>
       <form class='callback-form' action='https://formsubmit.co/{FORMSUBMIT_EMAIL}' method='post'>
         <div class='form-grid'>
           <label>Nombre<input type='text' name='Nombre' autocomplete='name' placeholder='Nombre y apellidos' required></label>
@@ -1321,7 +1478,7 @@ def callback_form(prefix: str, location: str = '') -> str:
         <input type='hidden' name='_template' value='table'>
         <input type='hidden' name='_captcha' value='false'>
         <input type='hidden' name='_next' value='{DOMAIN}/contacto/?ok=1'>
-        <input type='hidden' name='Origen' value='Limpiezas Galaxia · {DOMAIN}'>
+        <input type='hidden' name='Origen' value='Limpiezas Galaxia · {DOMAIN} ({variant})'>
         <input type='text' name='_honey' style='display:none' tabindex='-1' autocomplete='off'>
         <button class='cta' type='submit'>Nosotros te llamamos</button>
         <small>Tus datos solo se usan para devolverte la llamada (RGPD). También puedes llamar al {PHONE}.</small>
@@ -1356,7 +1513,7 @@ def landing_image(prefix: str, label: str, service: str | None = None) -> str:
         img = SERVICE_IMAGE_MAP[service]
         service_phrase = f'para {SERVICE_LABELS[service]} '
     else:
-        img = LANDING_POOL[hash(label) % len(LANDING_POOL)]
+        img = LANDING_POOL[dhash(label) % len(LANDING_POOL)]
         service_phrase = ''
     alt = (
         f'{BASE_KEYWORD} {service_phrase}en {label}: '
@@ -1376,9 +1533,13 @@ def html_page(page: Page) -> str:
     schema_html = ''
     if page.schema:
         schema_html = f"<script type='application/ld+json'>{json.dumps(page.schema, ensure_ascii=False)}</script>"
-    title = page.title if len(page.title) < 62 else page.title[:59] + '...'
-    desc = page.description[:158]
-    preload_lcp = f"<link rel='preload' as='image' href='{prefix}assets/img/hero-industrial.jpg' imagesrcset='{prefix}assets/img/hero-industrial.webp' imagesizes='100vw'>" if page.url != '/' else "<link rel='preload' as='image' href='assets/img/hero-industrial.jpg' imagesrcset='assets/img/hero-industrial.webp' imagesizes='100vw'>"
+    # Truncado por palabra (sin '...' literal) para no cortar a mitad de palabra
+    # ni meter puntos suspensivos dentro del <title>/<meta>.
+    title = page.title if len(page.title) <= 60 else page.title[:60].rsplit(' ', 1)[0]
+    desc = page.description if len(page.description) <= 158 else page.description[:158].rsplit(' ', 1)[0]
+    # Preload del LCP alineado con el <img> real del hero (mismo .jpg, sin
+    # imagesrcset que provocaba doble descarga jpg+webp).
+    preload_lcp = f"<link rel='preload' as='image' href='{prefix}assets/img/hero-industrial.jpg' fetchpriority='high'>"
     return f"""<!doctype html>
 <html lang='es'>
 <head>
@@ -1405,7 +1566,7 @@ def html_page(page: Page) -> str:
 <meta name='apple-mobile-web-app-title' content='Galaxia'>
 <meta name='application-name' content='Galaxia'>
 {preload_lcp}
-<style>{CSS}</style>
+<link rel='stylesheet' href='{prefix}assets/app.css'>
 {schema_html}
 </head>
 <body>{common_header(prefix)}{page.body}{common_footer(prefix)}</body></html>"""
@@ -1419,9 +1580,9 @@ def write_page(page: Page) -> None:
 
 def hero_block(title: str, lead: str, prefix_img: str = 'assets/img/hero-industrial.jpg') -> str:
     return f"""
-    <main class='hero'><div class='wrap grid hero-grid'>
-      <section class='panel hero-copy'><div class='eyebrow'>B2B · post-incendio · peritos y aseguradoras</div><h1>{title}</h1><p class='lead'>{lead}</p><div class='actions'><a class='cta' href='contacto/'>Solicitar informe técnico</a><a class='ghost' href='casos-de-exito/'>Ver casos de éxito</a></div><div class='grid stats'><div class='stat'><strong>+500</strong><span>siniestros evaluados</span></div><div class='stat'><strong>25</strong><span>provincias prioritarias</span></div><div class='stat'><strong>-98%</strong><span>partículas objetivo</span></div></div></section>
-      <figure class='panel hero-img reveal'><img src='{prefix_img}' width='1280' height='720' loading='eager' alt='Equipo técnico de limpieza de humo y hollín en nave industrial'></figure>
+    <main id='main-content' class='hero'><div class='wrap grid hero-grid'>
+      <section class='panel hero-copy'><div class='eyebrow'>B2B · post-incendio · peritos y aseguradoras</div><h1>{title}</h1><p class='lead'>{lead}</p><div class='actions'><a class='cta' href='contacto/'>Solicitar informe técnico</a><a class='ghost' href='casos-de-exito/'>Ver casos de éxito</a></div><div class='grid stats'><div class='stat'><strong>24/7</strong><span>respuesta ante siniestros</span></div><div class='stat'><strong>HEPA H14</strong><span>filtración de partículas</span></div><div class='stat'><strong>España</strong><span>cobertura nacional</span></div></div></section>
+      <figure class='panel hero-img reveal'><img src='{prefix_img}' width='1280' height='720' loading='eager' alt='Equipo técnico de Galaxia durante una limpieza de incendios en nave industrial'></figure>
     </div></main>"""
 
 
@@ -1444,20 +1605,18 @@ def home_page() -> Page:
         ('¿Qué imágenes usa la galería?', 'Ahora contiene imágenes provisionales. Se sustituirá por trabajos reales cuando el cliente los facilite.'),
         ('¿Se limpian conductos de climatización?', 'Sí, cuando el humo o el hollín han entrado en el sistema de aire.'),
         ('¿Cuál es la cobertura?', 'La cobertura se organiza en toda España con prioridad en 25 provincias indicadas en el proyecto.')])
-    body = hero_block('Limpieza de humo y hollín · respuesta técnica para grandes y pequeños siniestros', 'Descontaminación post-incendio para naves, hoteles, comunidades, centros sanitarios, comercios, viviendas y activos críticos. Equipos técnicos, trazabilidad documental y respuesta 24/7.')
+    body = hero_block('Limpieza de incendios · respuesta técnica para grandes y pequeños siniestros', 'Limpieza post incendio y descontaminación de humo y hollín para naves, hoteles, comunidades, centros sanitarios, comercios, viviendas y activos críticos. Equipos técnicos, trazabilidad documental y respuesta 24/7.')
     body += f"""
-    <section class='section'><div class='wrap section-head'><div><div class='eyebrow'>Tecnología aplicada</div><h2>Sistemas técnicos para hollín, humo y olor</h2></div><p>Galaxia combina maquinaria, metodología y documentación para que cada intervención sea defendible ante dirección, seguro y peritación.</p></div><div class='wrap grid bento'>{cards}</div></section>
-    <section class='section'><div class='wrap section-head'><div><div class='eyebrow'>Sectores</div><h2>Actividad industrial, terciaria y residencial compleja</h2></div><p>Los protocolos se adaptan al riesgo de cada inmueble, desde salas técnicas hasta naves logísticas y hoteles en operación.</p></div><div class='wrap grid bento'>{sectors}</div></section>
+    <section class='section'><div class='wrap section-head'><div><div class='eyebrow'>Tecnología aplicada</div><h2>Sistemas técnicos para hollín, humo y olor</h2></div><p>En cada limpieza de incendios, Galaxia une maquinaria, método y documentación para que la intervención sea defendible ante dirección, seguro y peritación.</p></div><div class='wrap grid bento'>{cards}</div></section>
+    <section class='section'><div class='wrap section-head'><div><div class='eyebrow'>Sectores</div><h2>Actividad industrial, terciaria y residencial compleja</h2></div><p>Ajustamos cada protocolo de limpieza post incendio al riesgo del inmueble, desde salas técnicas hasta naves logísticas y hoteles en plena operación.</p></div><div class='wrap grid bento'>{sectors}</div></section>
     <section class='section'><div class='wrap grid case panel'><img src='assets/img/gallery-warehouse.jpg' width='1408' height='1056' loading='lazy' alt='Caso técnico de limpieza post-incendio en nave logística'><div class='copy'><div class='eyebrow'>Caso destacado</div><h2>2.000 m² de nave logística estabilizados en 72 horas</h2><p>Intervención con filtración HEPA, retirada de hollín en estructura metálica y coordinación con peritación. Objetivo: evitar contaminación cruzada y preparar reapertura por fases.</p><dl><div><dt>Superficie</dt><dd>2.000 m²</dd></div><div><dt>Plazo</dt><dd>72 h</dd></div><div><dt>Parada crítica</dt><dd>0 días extra</dd></div><div><dt>Informe</dt><dd>Pericial</dd></div></dl></div></div></section>
     <section class='section'><div class='wrap'><div class='section-head'><div><div class='eyebrow'>Proceso</div><h2>Proceso técnico en cinco fases</h2></div></div><div class='grid steps'><article class='card step'><h3>Inspección</h3><p>Lectura del daño, accesos y riesgos.</p></article><article class='card step'><h3>Contención</h3><p>Sectorización y protección de zonas no afectadas.</p></article><article class='card step'><h3>Retirada</h3><p>Hollín, residuos y carga olorosa.</p></article><article class='card step'><h3>Tratamiento</h3><p>HEPA, ozono, fogging o hielo seco según soporte.</p></article><article class='card step'><h3>Informe</h3><p>Documentación y recomendaciones finales.</p></article></div></div></section>
     <section class='section'><div class='wrap panel hero-copy'><div class='eyebrow'>Peritos y aseguradoras</div><h2>Informes compatibles con gestión de siniestros</h2><p>Preparamos documentación técnica con fotografías, alcance, fases ejecutadas, observaciones y prioridades de recuperación para facilitar la toma de decisiones.</p><a class='cta' href='peritos/'>Acceso peritos</a></div></section>
     <section class='section'><div class='wrap'><div class='section-head'><div><div class='eyebrow'>Galería provisional</div><h2>Intervenciones técnicas y equipos</h2></div><p>Estas imágenes son provisionales generadas para maquetación. Se sustituirán por trabajos reales cuando estén disponibles.</p></div>{gallery_grid('')}</div></section>
     <section class='section faq'><div class='wrap content'><div class='eyebrow'>FAQ técnica</div><h2>Preguntas frecuentes</h2>{faqs}</div></section>
-    <section class='section'><div class='wrap'><div class='section-head'><div><div class='eyebrow'>Testimonios</div><h2>Lo que dicen quienes han trabajado con nosotros</h2></div></div><div class='grid testimonials'>{testimonials_html()}</div></div></section>
     <section class='section'><div class='wrap'>{delegations_html('')}</div></section>
     <section class='section'><div class='wrap'><div class='section-head'><div><div class='eyebrow'>Cobertura</div><h2>Provincias prioritarias en {len(set([CITY_PROVINCE[c] for c in CITIES if c in CITY_PROVINCE]))} territorios</h2></div></div><div class='coverage'>{''.join(f'<a href="limpieza-incendios-{p}/">{slug_title(p)}</a><br>' for p in PROVINCES)}</div></div></section>
     """
-    avg_rating = round(sum(t['rating'] for t in TESTIMONIALS) / len(TESTIMONIALS), 1)
     schema = {
         "@context": "https://schema.org",
         "@graph": [
@@ -1471,14 +1630,8 @@ def home_page() -> Page:
                 "description": TAGLINE,
                 "sameAs": [GBP],
                 "areaServed": "España",
-                "subOrganization": [delegation_local_business(d) for d in DELEGATIONS],
-                "aggregateRating": {
-                    "@type": "AggregateRating",
-                    "ratingValue": avg_rating,
-                    "bestRating": 5,
-                    "reviewCount": len(TESTIMONIALS),
-                },
-                "review": testimonials_schema(),
+                # Referencia por @id; el objeto completo va a nivel de @graph.
+                "subOrganization": [{"@id": f'{DOMAIN}/#{d["id"]}'} for d in DELEGATIONS],
             },
             *[delegation_local_business(d) for d in DELEGATIONS],
             faq_schema([(q, a) for q, a in [
@@ -1492,7 +1645,7 @@ def home_page() -> Page:
             ]]),
         ],
     }
-    return Page('/', 'Galaxia · Limpieza técnica post-incendio', 'Empresa técnica B2B de limpieza de humo y hollín, descontaminación post-incendio e informes para peritos en toda España.', body, schema, '1.0', 'weekly')
+    return Page('/', 'Galaxia · Limpieza de incendios y limpieza post incendio', 'Empresa B2B de limpieza de incendios y limpieza post incendio: descontaminación de humo y hollín e informes para peritos en toda España.', body, schema, '1.0', 'weekly')
 
 
 def gallery_grid(prefix: str) -> str:
@@ -1517,7 +1670,7 @@ def structural_pages() -> List[Page]:
         ('/preguntas-tecnicas/','Preguntas técnicas frecuentes','FAQ técnica post-incendio','Respuestas para peritos, administradores de fincas y responsables de mantenimiento.'),
         ('/blog/','Blog técnico post-incendio','Blog técnico de limpieza post-incendio','Artículos técnicos sobre humo, hollín, olores, maquinaria, peritación y recuperación.'),
         ('/galeria/','Galería técnica provisional','Galería de intervenciones post-incendio','Imágenes provisionales de trabajos técnicos que se sustituirán por fotos reales del cliente.'),
-        ('/cobertura/','Cobertura nacional Galaxia España','Cobertura de limpieza de humo y hollín','Cobertura operativa de Galaxia en 25 provincias y 252 ciudades prioritarias para limpieza técnica post-incendio.'),
+        ('/cobertura/','Cobertura nacional Galaxia España','Cobertura de limpieza de incendios','Cobertura operativa de Galaxia en 8 comunidades autónomas y cientos de municipios para limpieza de incendios y limpieza post incendio.'),
         ('/privacidad/','Política de privacidad Galaxia','Política de privacidad','Información sobre tratamiento de datos de contacto, solicitudes técnicas, conservación de mensajes y derechos del usuario.'),
         ('/cookies/','Política de cookies Galaxia','Política de cookies','Información sobre el uso limitado de cookies técnicas, medición analítica básica y configuración de navegación.'),
         ('/aviso-legal/','Aviso legal corporativo Galaxia','Aviso legal','Condiciones de uso del sitio web, datos identificativos disponibles y canales de contacto técnico de Galaxia.'),
@@ -1542,28 +1695,28 @@ def structural_pages() -> List[Page]:
 
 CASE_STUDIES = [
     ('gallery-hotel.jpg',     'Hotel · 84 habitaciones desodorizadas en 5 días',
-     'Incendio de cocina en planta baja; el humo alcanzó 4 plantas vía ventilación. Intervención por fases: filtración HEPA, lavado de superficies, ozono y verificación olfativa antes de reapertura comercial.',
+     'Un incendio de cocina en planta baja llevó el humo hasta cuatro plantas por la ventilación. Actuamos por fases: filtración HEPA, lavado de superficies, ozono y una verificación olfativa final antes de volver a abrir al público.',
      [('Superficie','3.200 m²'),('Plazo','5 días'),('Habitaciones','84'),('Reapertura','Sin cancelaciones')]),
     ('service-hepa.jpg',      'Restaurante · cocina industrial saneada en 48 h',
-     'Fuego de freidora con extensión a campana, falso techo y comedor. Retirada de hollín adherido, desengrase técnico, desodorización con hidroxilo y certificación previa a inspección sanitaria.',
+     'El fuego de una freidora se extendió a campana, falso techo y comedor. Retiramos el hollín adherido, aplicamos desengrase técnico y desodorización con hidroxilo, y dejamos el local certificado antes de la inspección sanitaria.',
      [('Superficie','420 m²'),('Plazo','48 h'),('Cobertura','Comedor + cocina'),('Informe','Pericial')]),
     ('service-hepa.jpg',      'Residencia de mayores · planta recuperada sin traslados',
-     'Incendio en lavandería con humo en planta de 40 residentes. Trabajo nocturno con cortinas de presión negativa para evitar traslados clínicos. Calidad de aire restaurada en 36 h.',
+     'Un incendio en la lavandería dejó humo en una planta con 40 residentes. Trabajamos de noche con cortinas de presión negativa para evitar traslados clínicos y devolvimos la calidad del aire en 36 horas.',
      [('Residentes','40 sin traslado'),('Plazo','36 h'),('PM2.5 final','<12 µg/m³'),('Coordinación','Médica')]),
     ('hero-industrial.jpg',   'Colegio · descontaminación de 12 aulas en fin de semana',
-     'Conato en sala de informática durante puente; humo en pasillo y aulas adyacentes. Intervención en 60 h para reapertura el lunes con certificación técnica entregada a inspección educativa.',
+     'Un conato en la sala de informática durante un puente dejó humo en el pasillo y en las aulas contiguas. En 60 horas el centro estaba listo para reabrir el lunes, con la certificación técnica entregada a la inspección educativa.',
      [('Aulas','12'),('Plazo','60 h'),('Reapertura','Lunes 8:00'),('Documentación','Inspección OK')]),
     ('gallery-hotel.jpg',     'Oficina · 1.800 m² planta abierta tratada con HEPA H14',
-     'Cuadro eléctrico con humo en oficinas corporativas. Aislamiento del foco, aspiración HEPA H14, tratamiento de documentación física y desodorización con ozono fuera de horario.',
+     'Un cuadro eléctrico llenó de humo unas oficinas corporativas. Aislamos el foco, aspiramos con HEPA H14, tratamos la documentación física y desodorizamos con ozono fuera del horario laboral.',
      [('Superficie','1.800 m²'),('Plazo','72 h'),('Documentos','Recuperados'),('Parada operativa','Mínima')]),
     ('gallery-warehouse.jpg', 'Nave logística · 2.000 m² estabilizados en 72 h',
-     'Incendio parcial en zona de palets con propagación de hollín por estructura metálica. Plan de retirada por sectores, filtración y coordinación con peritación. Sin extensión de parada operativa.',
+     'Un incendio parcial en la zona de palets propagó hollín por toda la estructura metálica. Planificamos la retirada por sectores, filtramos y coordinamos con la peritación, sin alargar ni un día la parada de la nave.',
      [('Superficie','2.000 m²'),('Plazo','72 h'),('Parada extra','0 días'),('Informe','Pericial')]),
     ('service-dry-ice.jpg',   'Garaje comunitario · combustión de vehículo retirada',
-     'Quema de un vehículo con afectación a 14 plazas. Retirada de residuos, descontaminación de pintura de plazas vecinas, ventilación forzada y desodorización antes de reabrir el acceso.',
+     'La quema de un vehículo afectó a 14 plazas. Retiramos los residuos, descontaminamos la pintura de las plazas vecinas, ventilamos de forma forzada y desodorizamos antes de reabrir el acceso.',
      [('Plazas','14 afectadas'),('Plazo','5 días'),('Olor residual','0'),('Comunidad','Informada')]),
     ('service-hepa.jpg',      'Comunidad de propietarios · portal y caja de escalera',
-     'Incendio en cuarto de contadores con propagación a portal y rellanos hasta 4ª planta. Intervención de fin de semana con documentación para administrador de fincas y seguro comunitario.',
+     'Un incendio en el cuarto de contadores se propagó al portal y a los rellanos hasta la cuarta planta. Intervinimos en fin de semana y preparamos la documentación para el administrador de fincas y el seguro comunitario.',
      [('Plantas','5 afectadas'),('Plazo','4 días'),('Acceso vecinos','Sin corte total'),('Seguro','OK')]),
 ]
 
@@ -1627,7 +1780,7 @@ def aviso_legal_html() -> str:
     return (
         "<div class='content'>"
         "<h2>1. Datos identificativos</h2>"
-        f"<p><strong>Titular:</strong> Galaxia · Limpieza Técnica Post-Incendio.<br>"
+        f"<p><strong>Titular:</strong> {BRAND}.<br>"
         f"<strong>Domicilio social:</strong> {ADDRESS}.<br>"
         f"<strong>Teléfono:</strong> <a href='tel:{PHONE_TEL}'>{PHONE}</a>.<br>"
         f"<strong>Email:</strong> <a href='mailto:{EMAIL}'>{EMAIL}</a>.<br>"
@@ -1636,10 +1789,11 @@ def aviso_legal_html() -> str:
         f"<strong>Web:</strong> <a href='{DOMAIN}'>{DOMAIN}</a>.</p>"
         "<h2>2. Objeto</h2>"
         "<p>El presente sitio web tiene como finalidad informar sobre los "
-        "servicios de limpieza técnica post-incendio, descontaminación, "
-        "desodorización industrial e informes para peritos prestados por "
-        "Galaxia. No se realizan transacciones económicas a través de este "
-        "sitio: el contacto es siempre técnico y para valoración previa.</p>"
+        "servicios de limpieza de incendios, limpieza post incendio, "
+        "descontaminación, desodorización industrial e informes para peritos "
+        "prestados por Galaxia. No se realizan transacciones económicas a "
+        "través de este sitio: el contacto es siempre técnico y para una "
+        "valoración previa.</p>"
         "<h2>3. Condiciones de uso</h2>"
         "<p>El usuario se compromete a hacer un uso adecuado de los "
         "contenidos y servicios, sin incurrir en actividades ilícitas, "
@@ -1724,7 +1878,7 @@ def simple_page(url: str, title: str, h: str, desc: str) -> Page:
         links = ''.join(f"<a href='{prefix}limpieza-incendios-{s}-madrid/'>Madrid · {SERVICE_LABELS[s]}</a>" for s in SERVICES[:6])
         extra = f"<div class='local-links'>{links}</div>"
     body = f"""
-    <main class='section'><div class='wrap content'><div class='breadcrumb'><a href='{prefix}'>Inicio</a> / {esc(h)}</div><div class='eyebrow'>Galaxia · documentación técnica</div><h1>{esc(h)}</h1><p class='lead'>{esc(desc)}</p><p>Esta página forma parte de la arquitectura corporativa de Galaxia para servicios de <strong>{BASE_KEYWORD}</strong>, descontaminación post-incendio, desodorización industrial e informes técnicos. El contenido está escrito para usuarios profesionales que requieren claridad, trazabilidad y velocidad de respuesta.</p><p>La metodología se apoya en inspección previa, protección de zonas no afectadas, filtración HEPA H14, tratamiento de hollín, control de olores, retirada de residuos y entrega documental. No se muestran precios cerrados porque cada siniestro exige medición de superficie, carga contaminante, accesos, ventilación y coordinación con peritación.</p>{extra}</div></main>"""
+    <main id='main-content' class='section'><div class='wrap content'><div class='breadcrumb'><a href='{prefix}'>Inicio</a> / {esc(h)}</div><div class='eyebrow'>Galaxia · documentación técnica</div><h1>{esc(h)}</h1><p class='lead'>{esc(desc)}</p><p>Esta página forma parte del proyecto de Galaxia dedicado a la <strong>{BASE_KEYWORD}</strong>: limpieza post incendio, descontaminación de humo y hollín, desodorización industrial e informes técnicos. Está redactada para profesionales que necesitan claridad, trazabilidad y rapidez de respuesta.</p><p>Nuestro método parte de una inspección previa y continúa con la protección de las zonas no afectadas, filtración HEPA H14, tratamiento del hollín, control de olores, retirada de residuos y entrega de documentación. No publicamos precios cerrados porque cada siniestro obliga a medir superficie, carga contaminante, accesos, ventilación y coordinación con la peritación.</p>{extra}</div></main>"""
     schema = None
     if url.startswith('/blog/') and url != '/blog/':
         schema = {"@context":"https://schema.org","@type":"Article","headline":h,"author":{"@type":"Organization","name":BRAND},"publisher":{"@type":"Organization","name":BRAND}}
@@ -1735,24 +1889,24 @@ def landing_pages() -> List[Page]:
     # 5 plantillas de meta-description rotantes para evitar duplicidad
     # percibida por buscadores. Cada landing recibe una según hash del slug.
     desc_templates = [
-        'Limpieza de humo y hollín en {l}: descontaminación post-incendio, eliminación de olor y HEPA H14 con informe pericial.',
-        'Empresa técnica de limpieza de incendios en {l}. Retiramos hollín, neutralizamos olor a humo y entregamos informe para peritos 24/7.',
-        '{l}: protocolo profesional post-incendio con filtración HEPA H14, ozono industrial, hielo seco y documentación pericial completa.',
-        'Limpieza tras siniestro en {l}: actuamos en 2-4 h, eliminamos hollín y olor a humo y coordinamos con tu aseguradora.',
-        'Descontaminación tras incendio en {l}. Equipo técnico B2B para naves, hoteles, comunidades y locales con trazabilidad documental.',
+        'Limpieza de incendios en {l}: limpieza post incendio, descontaminación de humo y hollín, eliminación de olor y HEPA H14 con informe pericial.',
+        'Empresa de limpieza de incendios en {l}. Retiramos hollín, neutralizamos el olor a humo y entregamos informe para peritos 24/7.',
+        '{l}: limpieza post incendio profesional con filtración HEPA H14, ozono industrial, hielo seco y documentación pericial completa.',
+        'Limpieza de incendios tras siniestro en {l}: actuamos en 2-4 h, eliminamos hollín y olor a humo y coordinamos con tu aseguradora.',
+        'Limpieza de incendios y descontaminación en {l}. Equipo B2B para naves, hoteles, comunidades y locales con trazabilidad documental.',
     ]
     title_templates = [
-        'Limpieza de humo y hollín en {l} | Galaxia',
+        'Limpieza de incendios en {l} | Galaxia',
         'Limpieza de incendios en {l} · Galaxia · 24/7',
-        'Empresa de limpieza post-incendio en {l} | Galaxia',
-        'Galaxia · Limpieza tras incendio en {l}',
-        '{l}: limpieza profesional de humo y hollín | Galaxia',
+        'Limpieza post incendio en {l} | Galaxia',
+        'Galaxia · Limpieza de incendios en {l}',
+        '{l}: limpieza de incendios | Galaxia',
     ]
     pages: List[Page] = []
     for i, city in enumerate(CITIES):
         label = slug_title(city)
         url = f'/limpieza-incendios-{city}/'
-        h = abs(hash('t' + city))
+        h = dhash('t' + city)
         title = title_templates[h % len(title_templates)].format(l=label)
         desc = desc_templates[h % len(desc_templates)].format(l=label)
         body = landing_body(url, label, landing_copy(city, None, 1000+i), city, None)
@@ -1764,18 +1918,20 @@ def landing_pages() -> List[Page]:
             label = slug_title(province)
             url = f'/limpieza-incendios-{service}-{province}/'
             service_label = SERVICE_LABELS[service]
+            service_short = SERVICE_LABELS_SHORT.get(service, service_label)
+            # Títulos compactos (<=60 car.): keyword + sector corto + provincia.
             sv_title_templates = [
-                'Limpieza post-incendio en {s} · {l} | Galaxia',
-                'Limpieza de humo y hollín en {s} ({l}) · Galaxia',
-                '{s} tras incendio en {l} · limpieza técnica | Galaxia',
+                'Limpieza de incendios en {ss} · {l}',
+                'Limpieza post incendio en {ss} · {l}',
+                '{ssc} tras incendio en {l} | Galaxia',
             ]
             sv_desc_templates = [
-                'Limpieza técnica post-incendio para {s} en {l}: hollín, humo, olor, HEPA H14 e informe para peritos.',
-                'Empresa de limpieza de incendios en {s} en {l}. Descontaminación, ozono y trazabilidad documental 24/7.',
-                'Intervención técnica para {s} afectadas por fuego en {l}. Retirada de hollín y desodorización profesional.',
+                'Limpieza de incendios para {s} en {l}: hollín, humo, olor, HEPA H14 e informe para peritos.',
+                'Empresa de limpieza post incendio para {s} en {l}. Descontaminación, ozono y trazabilidad documental 24/7.',
+                'Limpieza de incendios para {s} afectadas por fuego en {l}. Retirada de hollín y desodorización profesional.',
             ]
-            h2 = abs(hash(service + province))
-            title = sv_title_templates[h2 % len(sv_title_templates)].format(s=service_label, l=label)
+            h2 = dhash(service + province)
+            title = sv_title_templates[h2 % len(sv_title_templates)].format(ss=service_short, ssc=service_short.capitalize(), l=label)
             desc = sv_desc_templates[h2 % len(sv_desc_templates)].format(s=service_label, l=label)
             body = landing_body(url, label, landing_copy(province, service, seed), province, service)
             schema = service_schema(label, service, url)
@@ -1787,9 +1943,9 @@ def landing_pages() -> List[Page]:
 def landing_body(url: str, label: str, copy: str, slug: str, service: str | None) -> str:
     prefix = rel_prefix(url)
     service_line = SERVICE_LABELS.get(service, 'instalaciones industriales y activos afectados')
-    related_services = ''.join(f"<a href='{prefix}limpieza-incendios-{s}-{PROVINCES[hash(slug+s)%len(PROVINCES)]}/'>{SERVICE_LABELS[s]}</a>" for s in SERVICES[:6])
+    related_services = ''.join(f"<a href='{prefix}limpieza-incendios-{s}-{PROVINCES[dhash(slug+s)%len(PROVINCES)]}/'>{SERVICE_LABELS[s]}</a>" for s in SERVICES[:6])
     related_cities = ''.join(f"<a href='{prefix}limpieza-incendios-{c}/'>{slug_title(c)}</a>" for c in related_geo_cities(slug, 6))
-    h1 = f'Limpieza de humo y hollín en {label}' if not service else f'Limpieza de humo y hollín para {service_line} en {label}'
+    h1 = f'Limpieza de incendios en {label}' if not service else f'Limpieza de incendios para {service_line} en {label}'
     # Featured Snippet block (Posición Cero)
     featured = featured_snippet_block(label, service)
     # Panel propio si la ciudad tiene delegación física
@@ -1818,65 +1974,83 @@ def landing_body(url: str, label: str, copy: str, slug: str, service: str | None
     )
     profile = city_profile_paragraphs(slug, label) if not service else ''
     urgency = (
-        f"<p class='urgency-cta'>Si has sufrido un incendio en {label}, "
-        f"el tiempo cuenta: el hollín reacciona con superficies en las "
-        f"primeras 24-72 horas y el olor se fija si no se actúa pronto. "
-        f"Déjanos tu teléfono y te llamamos en minutos para coordinar la "
-        f"visita técnica.</p>"
+        f"<p class='urgency-cta'>¿Has sufrido un incendio en {label}? "
+        f"El tiempo juega en contra: durante las primeras 24-72 horas el "
+        f"hollín reacciona con las superficies y el olor se fija si no se "
+        f"interviene a tiempo. Déjanos tu teléfono y te llamamos en minutos "
+        f"para coordinar la visita técnica de limpieza post incendio.</p>"
     )
+    # Encabezados y orden de bloques finales diversificados por página.
+    eyebrow = deterministic_choice([
+        'Intervención local tras incendio · 24/7',
+        'Servicio de urgencias por incendio · 24/7',
+        'Limpieza tras incendio · respuesta inmediata',
+        'Equipo técnico local · disponible 24/7',
+    ], slug + 'eyebrow')
+    h_rel_services = deterministic_choice([
+        'Otros servicios tras incendio',
+        'Servicios relacionados',
+        'Más soluciones tras un siniestro',
+    ], slug + 'rel-svc')
+    h_rel_zones = deterministic_choice([
+        f'Ciudades cercanas donde intervenimos',
+        f'Zonas próximas a {label}',
+        f'Cobertura cercana a {label}',
+    ], slug + 'rel-zon')
+    related_services_block = f"<h2>{h_rel_services}</h2><div class='local-links'>{related_services}</div>"
+    related_cities_block = f"<h2>{h_rel_zones}</h2><div class='local-links'>{related_cities}</div>"
+    # Alterna el orden de los dos bloques de enlaces internos.
+    if int(deterministic_choice(['0', '1'], slug + 'rel-order')):
+        related_blocks = related_cities_block + related_services_block
+    else:
+        related_blocks = related_services_block + related_cities_block
     return f"""
-    <main id='main-content' class='section'><div class='wrap content'><div class='breadcrumb'><a href='{prefix}'>Inicio</a> / <a href='{prefix}cobertura/'>Cobertura</a> / {esc(label)}</div><div class='eyebrow'>Intervención técnica local · 24/7</div><h1>{esc(h1)}</h1>{featured}<p class='lead'>Respuesta técnica para siniestros con humo, hollín, olor persistente y residuos de combustión. Enfoque B2B, trazabilidad documental e informe compatible con peritación.</p>{landing_image(prefix, label, service)}{dele_panel}{urgency}{callback_form(prefix, label)}{profile}{copy}{inline_links}<h2>Enlaces técnicos relacionados</h2><div class='local-links'>{related_services}</div><h2>Zonas relacionadas</h2><div class='local-links'>{related_cities}</div>{callback_form(prefix, label)}<div class='notice'><strong>Contacto técnico:</strong> {PHONE} · {EMAIL}. Presupuesto previa visita técnica o evaluación documental.</div></div></main>"""
+    <main id='main-content' class='section'><div class='wrap content'><div class='breadcrumb'><a href='{prefix}'>Inicio</a> / <a href='{prefix}cobertura/'>Cobertura</a> / {esc(label)}</div><div class='eyebrow'>{eyebrow}</div><h1>{esc(h1)}</h1>{featured}<p class='lead'>Empresa de limpieza de incendios y limpieza post incendio en {esc(label)}: actuamos sobre humo, hollín, olor persistente y residuos de combustión con enfoque B2B, trazabilidad documental e informe compatible con peritación.</p>{landing_image(prefix, label, service)}{dele_panel}{urgency}{callback_form(prefix, label)}{profile}{copy}{inline_links}{related_blocks}{callback_form(prefix, label, 'bottom')}<div class='notice'><strong>Contacto técnico:</strong> {PHONE} · {EMAIL}. Presupuesto previa visita técnica o evaluación documental.</div></div></main>"""
 
 
 def service_schema(label: str, service: str | None, url: str) -> dict:
     audience = ["peritos de seguros","directores de operaciones","administradores de fincas","jefes de mantenimiento"]
     name = f'{BASE_KEYWORD} en {label}' if not service else f'{BASE_KEYWORD} para {SERVICE_LABELS[service]} en {label}'
-    # Si el slug coincide con una delegación, usar sus datos (dirección y geo
-    # propios). Si no, caer a la central de Madrid.
+    # LocalBusiness con dirección/geo SOLO si hay delegación física real en esa
+    # ciudad. En el resto, no se inventa una dirección (antes se heredaba la de
+    # Madrid en cientos de páginas → NAP falso).
     slug_norm = label.lower().replace(' ', '-')
-    delegation = next((d for d in DELEGATIONS if d['city_slug'] == slug_norm), DELEGATIONS[0])
-    local_business = delegation_local_business(delegation)
-    local_business['areaServed'] = label
+    delegation = next((d for d in DELEGATIONS if d['city_slug'] == slug_norm), None)
+    crumb_name = f'{SERVICE_LABELS[service]} en {label}' if service else label
     crumbs = {
         "@type": "BreadcrumbList",
         "itemListElement": [
             {"@type": "ListItem", "position": 1, "name": "Inicio", "item": DOMAIN + "/"},
             {"@type": "ListItem", "position": 2, "name": "Cobertura", "item": DOMAIN + "/cobertura/"},
-            {"@type": "ListItem", "position": 3, "name": label, "item": DOMAIN + url},
+            {"@type": "ListItem", "position": 3, "name": crumb_name, "item": DOMAIN + url},
         ],
     }
-    # FAQPage + Review específicos de la landing (item 13, 14 backlog)
     landing_faq = faq_schema([
         (f'¿Atienden urgencias por incendio en {label}?',
          f'Sí, atendemos 24/7. La intervención técnica en {label} se coordina en horas tras una visita técnica de evaluación.'),
-        (f'¿La limpieza de humo y hollín la pueden hacer otros gremios en {label}?',
+        (f'¿La limpieza de incendios la pueden hacer otros gremios en {label}?',
          'No. La descontaminación con HEPA H14, ozono y hielo seco requiere equipos y formación específicos; las obras posteriores las hacen empresas designadas por la aseguradora.'),
         (f'¿Trabajan con aseguradoras y peritos en {label}?',
          f'Sí. Preparamos informe técnico con fotografías, alcance y fases ejecutadas para que el perito en {label} pueda validar el siniestro sin fricciones.'),
         (f'¿Cuánto tarda la limpieza en {label}?',
          f'Depende del tamaño del siniestro. En {label} solemos estabilizar zonas críticas en 24-72 h y entregar el espacio operativo en pocos días.'),
     ])
-    # 2 reviews rotantes del pool global, deterministas por slug
-    idx = abs(hash(label)) % len(TESTIMONIALS)
-    picks = [TESTIMONIALS[idx], TESTIMONIALS[(idx + 3) % len(TESTIMONIALS)]]
-    landing_reviews = [{
-        '@type': 'Review',
-        'reviewRating': {'@type': 'Rating', 'ratingValue': t['rating'], 'bestRating': 5},
-        'author': {'@type': 'Person', 'name': t['author']},
-        'reviewBody': t['text'],
-        'datePublished': t['date'],
-        'itemReviewed': {'@type': 'LocalBusiness', '@id': local_business['@id']},
-    } for t in picks]
-    return {"@context": "https://schema.org", "@graph": [
+    graph = [
         {"@type": "Service", "name": name,
-         "provider": {"@type": "ProfessionalService", "name": BRAND, "telephone": PHONE_TEL, "email": EMAIL, "hasMap": GBP, "url": DOMAIN, "sameAs": [GBP]},
+         "provider": {"@id": DOMAIN + "/#organization"},
          "audience": {"@type": "BusinessAudience", "audienceType": ', '.join(audience)},
          "areaServed": label, "url": DOMAIN + url},
-        local_business,
+        # Organización mínima para que el @id de provider resuelva en la página.
+        {"@type": "Organization", "@id": DOMAIN + "/#organization", "name": BRAND,
+         "url": DOMAIN, "telephone": PHONE_TEL, "email": EMAIL, "sameAs": [GBP]},
         landing_faq,
-        *landing_reviews,
         crumbs,
-    ]}
+    ]
+    if delegation:
+        lb = delegation_local_business(delegation)
+        lb['areaServed'] = label
+        graph.insert(1, lb)
+    return {"@context": "https://schema.org", "@graph": graph}
 
 
 def clean_previous() -> None:
@@ -1969,17 +2143,17 @@ def webmanifest() -> None:
 
 
 def sitemap(pages: List[Page]) -> None:
+    lastmod = datetime.date.today().isoformat()
     urls = []
     for p in pages:
-        urls.append(f"  <url><loc>{DOMAIN}{p.url}</loc><changefreq>{p.changefreq}</changefreq><priority>{p.priority}</priority></url>")
-    xml = "<?xml version='1.0' encoding='UTF-8'?>\n<urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>\n" + '\n'.join(urls) + "\n</urlset>\n"
+        urls.append(f"  <url><loc>{DOMAIN}{p.url}</loc><lastmod>{lastmod}</lastmod><changefreq>{p.changefreq}</changefreq><priority>{p.priority}</priority></url>")
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + '\n'.join(urls) + "\n</urlset>\n"
     (ROOT / 'sitemap.xml').write_text(xml, encoding='utf-8')
-    robots = f"""# robots.txt — Galaxia · Limpieza Técnica Post-Incendio
+    robots = f"""# robots.txt — {BRAND}
 # https://www.robotstxt.org/
 
 User-agent: *
 Allow: /
-Disallow: /assets/img/logo_nuevo.png
 Disallow: /assets/img/logo_nuevo_02.png
 
 # Bots de IA explícitamente permitidos (queremos visibilidad en respuestas)
@@ -2012,9 +2186,9 @@ Sitemap: {DOMAIN}/sitemap.xml
 
 
 def readme(total_pages: int, landing_count: int) -> None:
-    md = f"""# Galaxia · Limpieza Técnica Post-Incendio
+    md = f"""# {BRAND}
 
-Web estática B2B para **{BASE_KEYWORD}** y descontaminación post-incendio, preparada para hosting estático y para publicación desde GitHub.
+Web estática B2B para **{BASE_KEYWORD}** y **{SECONDARY_KEYWORD}**, preparada para hosting estático y para publicación desde GitHub.
 
 ## Estado de generación
 
@@ -2076,6 +2250,9 @@ def main() -> None:
     # No limpiar antes de convertir activos generados; solo eliminar páginas antiguas preservando spintax y assets/img.
     (ROOT / 'assets' / 'img').mkdir(parents=True, exist_ok=True)
     prepare_assets()
+    # CSS y JS externos cacheables (antes se inyectaban inline en cada página).
+    (ROOT / 'assets' / 'app.css').write_text(CSS, encoding='utf-8')
+    (ROOT / 'assets' / 'app.js').write_text(JS, encoding='utf-8')
     pages = structural_pages() + landing_pages()
     for p in pages:
         write_page(p)

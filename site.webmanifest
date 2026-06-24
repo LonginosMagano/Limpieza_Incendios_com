@@ -1,7 +1,7 @@
 {
-  "name": "Galaxia · Limpieza Técnica Post-Incendio",
+  "name": "Galaxia · Limpieza de Incendios",
   "short_name": "Galaxia",
-  "description": "Tecnología industrial para grandes y pequeños siniestros",
+  "description": "Limpieza de incendios y limpieza post incendio con tecnología industrial",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

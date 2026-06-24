@@ -1,9 +1,8 @@
-# robots.txt — Galaxia · Limpieza Técnica Post-Incendio
+# robots.txt — Galaxia · Limpieza de Incendios
 # https://www.robotstxt.org/
 
 User-agent: *
 Allow: /
-Disallow: /assets/img/logo_nuevo.png
 Disallow: /assets/img/logo_nuevo_02.png
 
 # Bots de IA explícitamente permitidos (queremos visibilidad en respuestas)
@@ -30,4 +29,4 @@ Crawl-delay: 30
 User-agent: MJ12bot
 Disallow: /
 
-Sitemap: https://limpiezadeincendiosgalaxia.es/sitemap.xml
+Sitemap: https://limpiezaincendios.com/sitemap.xml
