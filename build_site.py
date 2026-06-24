@@ -1193,8 +1193,20 @@ def city_profile_paragraphs(slug: str, label: str) -> str:
     p = CITY_PROFILES.get(slug)
     if not p:
         return ''
+    h_zonas = deterministic_choice([
+        f"Zonas y particularidades de {label}",
+        f"Cómo es {label} y qué implica tras un incendio",
+        f"{label} barrio a barrio: dónde intervenimos",
+        f"El parque inmobiliario de {label} ante un siniestro",
+    ], slug + 'cp-h2')
+    h_plan = deterministic_choice([
+        f"Cómo planificamos el servicio en {label}",
+        f"Nuestro método para un siniestro en {label}",
+        f"De la visita técnica al inmueble recuperado en {label}",
+        f"Paso a paso de una intervención en {label}",
+    ], slug + 'cp-h3')
     return (
-        f"<h2>Zonas y particularidades de {label}</h2>"
+        f"<h2>{h_zonas}</h2>"
         f"<p>La trama urbana de {label} es muy concreta y condiciona cualquier "
         f"trabajo de limpieza de incendios. Intervenimos en {p['zonas']}, "
         f"desde el centro hasta los barrios de la periferia. Como predominan "
@@ -1208,7 +1220,7 @@ def city_profile_paragraphs(slug: str, label: str) -> str:
         f"que necesita la peritación. Los riesgos más repetidos en {label} son "
         f"{p['risk']}, que piden equipos especializados y experiencia previa en "
         f"este tipo de siniestros.</p>"
-        f"<h3>Cómo planificamos una limpieza post incendio en {label}</h3>"
+        f"<h3>{h_plan}</h3>"
         f"<p>Todo arranca con una visita técnica que mide el alcance real del "
         f"daño: superficie afectada, carga de hollín, hasta dónde ha entrado el "
         f"humo en conductos y zonas ocultas, riesgo residual y compatibilidad "
@@ -1266,6 +1278,9 @@ def landing_copy(city_or_province: str, service: str | None, seed: int) -> str:
     loc = local_context(city_or_province)
     label = loc['label']
     service_text = SERVICE_LABELS.get(service, 'instalaciones industriales, comercios y edificios afectados')
+    # Término limpio para encabezados (el fallback de service_text acaba en
+    # "afectados" y genera concordancias duplicadas si se le añade un sufijo).
+    service_head = SERVICE_LABELS.get(service, 'viviendas, locales y naves')
     base = read_spintax_for(service)
     # Placeholders de ubicación de los ficheros spintax de servicio.
     prov_slug = city_or_province if service else CITY_PROVINCE.get(city_or_province, city_or_province)
@@ -1278,33 +1293,68 @@ def landing_copy(city_or_province: str, service: str | None, seed: int) -> str:
             .replace('{{SLUG}}', page_slug))
     base = base.replace('[CIUDAD]', label).replace('limpieza de incendios', BASE_KEYWORD).replace('Limpieza de Incendios', BASE_KEYWORD.capitalize())
     spun = resolve_spintax(base, seed)
+    # Encabezados diversificados (long-tail/secundarias) elegidos de forma
+    # determinista por página: evita repetir la keyword principal en todos los
+    # H2 (anti-sobreoptimización) y capta otras búsquedas (anti-canibalización).
+    h_service = deterministic_choice([
+        f"Protocolo de limpieza post incendio para {service_head} en {label}",
+        f"Cómo limpiamos {service_head} tras un incendio en {label}",
+        f"Saneamiento y retirada de hollín en {service_head} ({label})",
+        f"Recuperación de {service_head} tras el fuego en {label}",
+        f"Descontaminación de {service_head} tras incendio en {label}",
+    ], page_slug + 'h-svc')
+    h_local = deterministic_choice([
+        f"Coordinación del servicio tras incendio en {label}",
+        f"Urgencias por incendio en {label}: así actuamos",
+        f"Tiempos de respuesta y visita técnica en {label}",
+        f"Cómo organizamos la intervención en {label}",
+        f"Logística de la limpieza tras incendio en {label}",
+    ], page_slug + 'h-loc')
+    h_faq = deterministic_choice([
+        f"Preguntas frecuentes sobre limpieza tras incendio en {label}",
+        f"Dudas habituales tras un incendio en {label}",
+        f"Hollín, humo y olores: preguntas frecuentes en {label}",
+        f"Lo que más preguntan en {label} sobre el siniestro",
+        f"Resolvemos tus dudas sobre el incendio en {label}",
+    ], page_slug + 'h-faq')
+    h_quality = deterministic_choice([
+        f"Control de calidad y trazabilidad en {label}",
+        f"Cómo verificamos que el inmueble queda limpio en {label}",
+        f"Garantía de resultado y documentación en {label}",
+        f"Verificación final del trabajo en {label}",
+    ], page_slug + 'h-qua')
     intro = f"""
     <p>Galaxia es la empresa de <strong>{BASE_KEYWORD}</strong> en {label}: realizamos {SECONDARY_KEYWORD}, descontaminación de humo y hollín, control documental y planificación orientada a que el inmueble vuelva a estar operativo cuanto antes. Es un servicio pensado para peritos, administradores de activos, responsables de mantenimiento y direcciones de operaciones que buscan una respuesta verificable y trazable, no una limpieza convencional.</p>
     <p>El entorno de {label} concentra actividad ligada a {loc['industrial']} y escenarios de riesgo habituales en {loc['risk']}. Por eso la primera inspección separa el hollín graso de las partículas secas, los residuos de combustión, el olor que persiste y la afectación a los sistemas de climatización. El desplazamiento técnico se planifica sobre una distancia operativa estimada de {loc['distance']} km y se coordina con {loc['fire']} cuando el siniestro lo exige.</p>
     """
     service_block = f"""
-    <h2>Protocolo de limpieza post incendio para {service_text} en {label}</h2>
+    <h2>{h_service}</h2>
     <p>Cada intervención se ordena en cinco fases: contención de la zona, lectura de superficies, retirada del residuo carbonizado, desodorización industrial y verificación final. En todas ellas dejamos constancia de incidencias, fotografías de avance, materiales tratados y criterios de seguridad. El objetivo es bajar la carga de partículas, neutralizar olores y dejar el inmueble en un estado controlable para reparar, peritar o reabrir.</p>
     <p>Si el siniestro afecta a {service_text}, combinamos según el caso filtración HEPA H14, aspiración controlada, limpieza con hielo seco CO₂, fogging térmico, ozono industrial y neutralización de pH sobre superficies compatibles. La técnica se decide siempre tras una prueba en zona no visible, para no arrastrar hollín ni provocar veladuras o daños secundarios.</p>
     """
     spun_html = paragraphize(spun)
     local_extra = f"""
-    <h2>Coordinación local de la intervención en {label}</h2>
+    <h2>{h_local}</h2>
     <p>En {label} reservamos una ventana de visita de {loc['hours']} en función de los accesos, la disponibilidad de suministro, la autorización pericial y el nivel de contaminación. Damos prioridad a inmuebles con actividad económica, zonas comunes críticas, salas técnicas y espacios donde cada día de parada encarece el siniestro.</p>
     <p>El trabajo se cierra con un resumen técnico, la relación de zonas tratadas y recomendaciones para los gremios que entran después. Cuando hay aseguradora de por medio, preparamos información lista para la gestión del siniestro: fotografías, alcance, fases ejecutadas y observaciones relevantes.</p>
     """
     faq = f"""
-    <h2>Preguntas técnicas frecuentes sobre limpieza de incendios en {label}</h2>
+    <h2>{h_faq}</h2>
     <div class='faq'>
       <details><summary>¿La limpieza de incendios elimina también el olor a humo?</summary><p>Sí, pero hay que combinar retirada del residuo, filtración y tratamiento molecular. Si se aplica ozono o fogging sin retirar antes la carga de hollín, el olor termina reapareciendo.</p></details>
       <details><summary>¿Se puede empezar la limpieza post incendio antes de cerrar la peritación?</summary><p>Lo habitual es documentar primero el estado inicial y coordinar las autorizaciones. Galaxia organiza una visita técnica para delimitar daños sin comprometer la trazabilidad del siniestro.</p></details>
       <details><summary>¿Trabajan en horario de urgencia?</summary><p>Sí. La respuesta 24/7 se centra en estabilizar, contener las partículas, evaluar los accesos y planificar la recuperación del inmueble.</p></details>
     </div>
     """
-    combined = intro + service_block + spun_html + local_extra + faq
+    # Reordenado determinista de los bloques centrales para romper el patrón
+    # estructural respecto al sitio de origen (intro siempre primero, FAQ al final).
+    middles = [service_block, spun_html, local_extra]
+    perms = [(0, 1, 2), (1, 0, 2), (0, 2, 1), (2, 0, 1), (1, 2, 0), (2, 1, 0)]
+    order = perms[int(deterministic_choice([str(i) for i in range(len(perms))], page_slug + 'order'))]
+    combined = intro + ''.join(middles[i] for i in order) + faq
     if words(re.sub('<[^<]+?>', ' ', combined)) < 600:
         combined += f"""
-        <h2>Calidad y trazabilidad en cada limpieza de incendios</h2>
+        <h2>{h_quality}</h2>
         <p>Una limpieza post incendio no puede medirse solo por el aspecto visual. En {label} revisamos las zonas de deposición secundaria, juntas, rejillas, retornos de aire, paramentos altos y los recorridos que ha seguido el humo. Así evitamos que el inmueble parezca recuperado mientras conserva partículas activas, olor residual o contaminación desplazada a zonas que nadie ha inspeccionado.</p>
         <p>Cuando la evaluación lo pide, el equipo trabaja con EPI categoría III, protección respiratoria, aspiración filtrada y segregación de residuos. La visita técnica es la que permite dimensionar personal, maquinaria, consumibles, turnos y la coordinación posterior con electricidad, climatización, albañilería o pintura técnica.</p>
         """
@@ -1862,8 +1912,32 @@ def landing_body(url: str, label: str, copy: str, slug: str, service: str | None
         f"interviene a tiempo. Déjanos tu teléfono y te llamamos en minutos "
         f"para coordinar la visita técnica de limpieza post incendio.</p>"
     )
+    # Encabezados y orden de bloques finales diversificados por página.
+    eyebrow = deterministic_choice([
+        'Intervención local tras incendio · 24/7',
+        'Servicio de urgencias por incendio · 24/7',
+        'Limpieza tras incendio · respuesta inmediata',
+        'Equipo técnico local · disponible 24/7',
+    ], slug + 'eyebrow')
+    h_rel_services = deterministic_choice([
+        'Otros servicios tras incendio',
+        'Servicios relacionados',
+        'Más soluciones tras un siniestro',
+    ], slug + 'rel-svc')
+    h_rel_zones = deterministic_choice([
+        f'Ciudades cercanas donde intervenimos',
+        f'Zonas próximas a {label}',
+        f'Cobertura cercana a {label}',
+    ], slug + 'rel-zon')
+    related_services_block = f"<h2>{h_rel_services}</h2><div class='local-links'>{related_services}</div>"
+    related_cities_block = f"<h2>{h_rel_zones}</h2><div class='local-links'>{related_cities}</div>"
+    # Alterna el orden de los dos bloques de enlaces internos.
+    if int(deterministic_choice(['0', '1'], slug + 'rel-order')):
+        related_blocks = related_cities_block + related_services_block
+    else:
+        related_blocks = related_services_block + related_cities_block
     return f"""
-    <main id='main-content' class='section'><div class='wrap content'><div class='breadcrumb'><a href='{prefix}'>Inicio</a> / <a href='{prefix}cobertura/'>Cobertura</a> / {esc(label)}</div><div class='eyebrow'>Intervención técnica local · 24/7</div><h1>{esc(h1)}</h1>{featured}<p class='lead'>Empresa de limpieza de incendios y limpieza post incendio en {esc(label)}: actuamos sobre humo, hollín, olor persistente y residuos de combustión con enfoque B2B, trazabilidad documental e informe compatible con peritación.</p>{landing_image(prefix, label, service)}{dele_panel}{urgency}{callback_form(prefix, label)}{profile}{copy}{inline_links}<h2>Enlaces técnicos relacionados</h2><div class='local-links'>{related_services}</div><h2>Zonas relacionadas</h2><div class='local-links'>{related_cities}</div>{callback_form(prefix, label)}<div class='notice'><strong>Contacto técnico:</strong> {PHONE} · {EMAIL}. Presupuesto previa visita técnica o evaluación documental.</div></div></main>"""
+    <main id='main-content' class='section'><div class='wrap content'><div class='breadcrumb'><a href='{prefix}'>Inicio</a> / <a href='{prefix}cobertura/'>Cobertura</a> / {esc(label)}</div><div class='eyebrow'>{eyebrow}</div><h1>{esc(h1)}</h1>{featured}<p class='lead'>Empresa de limpieza de incendios y limpieza post incendio en {esc(label)}: actuamos sobre humo, hollín, olor persistente y residuos de combustión con enfoque B2B, trazabilidad documental e informe compatible con peritación.</p>{landing_image(prefix, label, service)}{dele_panel}{urgency}{callback_form(prefix, label)}{profile}{copy}{inline_links}{related_blocks}{callback_form(prefix, label)}<div class='notice'><strong>Contacto técnico:</strong> {PHONE} · {EMAIL}. Presupuesto previa visita técnica o evaluación documental.</div></div></main>"""
 
 
 def service_schema(label: str, service: str | None, url: str) -> dict:
