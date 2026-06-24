@@ -1,0 +1,28 @@
+{
+  "name": "Galaxia · Limpieza Técnica Post-Incendio",
+  "short_name": "Galaxia",
+  "description": "Tecnología industrial para grandes y pequeños siniestros",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0A0F18",
+  "theme_color": "#0A0F18",
+  "icons": [
+    {
+      "src": "/assets/img/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/img/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/img/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

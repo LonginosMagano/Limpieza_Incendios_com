@@ -1,0 +1,965 @@
+﻿
+
+
+
+
+Prompts
+ para Galaxia
+
+
+
+
+
+
+
+1. Estructura completa de 
+landings
+ (611 
+URLs
+ por web)
+
+
+
+
+252 
+landings
+ de ciudad pura — URL: /limpieza-incendios-&lt;ciudad&gt;/
+
+
+13 categorías de servicio × 25 provincias = 325 
+landings
+ 
+servicio+ciudad
+ — URL: /limpieza-incendios-&lt;servicio&gt;-&lt;ciudad&gt;/
+
+
+34 páginas no-
+landing
+ (home, blog, servicios genéricos, legales, FAQ, contacto, etc.)
+
+
+
+Total: 611 
+landings
+ + ~34 páginas estructurales por web.
+
+
+
+
+1.1 Las 13 categorías de servicio (multiplicar por las 25 provincias)
+
+
+
+bares              -&gt; /
+Keyword
+ principal-&lt;provincia&gt;/bodegas            -&gt; / 
+Keyword
+ principal -bodegas-&lt;provincia&gt;/centros-sanitarios -&gt; / 
+Keyword
+ principal -centros-sanitarios-&lt;provincia&gt;/colegios           -&gt; / 
+Keyword
+ principal -colegios-&lt;provincia&gt;/comercios          -&gt; / 
+Keyword
+ principal -comercios-&lt;provincia&gt;/comunidades        -&gt; / 
+Keyword
+ principal -comunidades-&lt;provincia&gt;/garajes            -&gt; / 
+Keyword
+ principal -garajes-&lt;provincia&gt;/hoteles            -&gt; / 
+Keyword
+ principal -hoteles-&lt;provincia&gt;/naves              -&gt; / 
+Keyword
+ principal -naves-&lt;provincia&gt;/oficinas           -&gt; / 
+Keyword
+ principal -oficinas-&lt;provincia&gt;/residencias        -&gt; / 
+Keyword
+ principal -residencias-&lt;provincia&gt;/restaurantes       -&gt; / 
+Keyword
+ principal -restaurantes-&lt;provincia&gt;/salas-
+tecnicas
+     -&gt; / 
+Keyword
+ principal -salas-
+tecnicas
+-&lt;provincia&gt;/
+
+
+
+
+1.2 Las 25 provincias (slugs a usar)
+
+
+
+
+albacete
+, alicante, 
+almeria
+, 
+barcelona
+, 
+cadiz
+, 
+castellon
+, ciudad-real,
+cordoba
+, cuenca, 
+girona
+, granada, 
+guadalajara
+, 
+huelva
+, 
+huesca
+, 
+jaen
+,
+lleida
+, 
+madrid
+, 
+malaga
+, 
+murcia
+, 
+sevilla
+, tarragona, 
+teruel
+, 
+toledo
+,valencia, zaragoza
+
+
+
+
+1.3 Lista completa de las 252 ciudades/poblaciones/barrios
+
+
+
+adra, 
+alaquas
+, 
+albacete
+, 
+alcala-guadaira
+, 
+alcala
+-henares, 
+alcala
+-real,
+alcaniz
+, alcantarilla, 
+alcazar
+-san-juan, 
+alcobendas
+, 
+alcorcon
+, 
+alcoy
+,
+algeciras
+, 
+alhama-murcia
+, 
+alhaurin
+-grande, 
+alhaurin
+-torre, alicante,
+almansa
+, 
+almassora
+, 
+almeria
+, 
+almonte
+, 
+almunecar
+, 
+alovera
+, altea, 
+alzira
+,andorra-
+teruel
+, 
+andujar
+, 
+antequera
+, arcos-frontera, arganda-rey, armilla,
+ayamonte
+, 
+azuqueca
+-henares, 
+badalona
+, 
+baena
+, 
+baeza
+, 
+balaguer
+, 
+barbastro
+,
+barcelona
+, baza, 
+benalmadena
+, 
+benicassim
+, 
+benidorm
+, 
+berja
+, 
+binefar
+, 
+blanes
+,
+brihuega
+, bullas, 
+burjassot
+, 
+burriana
+, 
+cabanillas
+-campo, cabra, 
+cadiz
+,
+calafell
+, 
+calatayud
+, 
+calpe
+, camas, 
+cambrils
+, 
+caravaca
+-cruz, 
+carmona
+,
+cartagena
+, 
+cartaya
+, 
+caspe
+, 
+castelldefels
+, 
+castellon
+, 
+catarroja
+,
+cerdanyola
+-valles, 
+cervera
+, 
+chiclana
+-frontera, chinchilla, ciudad-real,
+coin
+, colmenar-viejo, consuegra, 
+cordoba
+, 
+cornella-llobregat
+, 
+coslada
+,cuarte-
+huerva
+, cuenca, 
+daimiel
+, 
+denia
+, dos-hermanas, 
+ecija
+, 
+ejea
+-caballeros,el-ejido, el-
+vendrell
+, elche, 
+elda
+, estepa, 
+estepona
+, 
+figueres
+, fraga,
+fuengirola
+, 
+fuenlabrada
+, 
+gandia
+, 
+gava
+, 
+getafe
+, 
+girona
+, granada, 
+granollers
+,
+guadalajara
+, 
+guadix
+, 
+guardamar
+-segura, 
+hellin
+, 
+hospitalet-llobregat
+, 
+huelva
+,
+huercal-almeria
+, 
+huercal
+-overa, 
+huesca
+, igualada, 
+illescas
+, 
+jaen
+,jerez-frontera, jumilla, la-
+linea
+-
+concepcion
+, la-rinconada, la-roda, 
+lebrija
+,
+leganes
+, lepe, linares, 
+lleida
+, 
+lloret
+-mar, 
+loja
+, 
+lorca
+, los-barrios, 
+lucena
+,
+madrid
+, 
+madridejos
+, 
+mairena
+-aljarafe, 
+malaga
+, mallen, mancha-real, manises,
+manresa
+, manzanares, 
+maracena
+, marbella, 
+martos
+, 
+mataro
+, 
+mazarron
+, 
+mijas
+,
+mislata
+, 
+moguer
+, molina-segura, 
+mollerussa
+, 
+mollet
+-valles, montilla, 
+monzon
+,
+moron
+-frontera, 
+mostoles
+, motilla-
+palancar
+, motril, 
+murcia
+, 
+nerja
+, nules,ocana, 
+ogijares
+, 
+olot
+, 
+olula
+-rio, onda, 
+ontinyent
+, 
+orihuela
+, oropesa-mar,osuna, 
+palafrugell
+, palma-rio, palos-frontera, parla, pastrana, paterna,
+petrer
+, 
+picassent
+, pinos-puente, 
+pozoblanco
+, pozuelo-
+alarcon
+, 
+priego-cordoba
+,puente-
+genil
+, 
+puertollano
+, punta-
+umbria
+, 
+quintanar
+-orden, requena, 
+reus
+,
+rincon
+-victoria, 
+ripollet
+, 
+rivas-vaciamadrid
+, ronda, roquetas-mar, roses,rota, 
+rubi
+, 
+sabadell
+, 
+sagunto
+, 
+salou
+, 
+salt
+, san-clemente, san-
+fernando
+,san-javier, san-jose-rinconada, san-juan-
+aznalfarache
+, san-juan-puerto,san-pedro-
+alcantara
+, san-
+sebastian
+-reyes, san-
+vicente
+-
+raspeig
+,
+sanlucar-barrameda
+, 
+sant-boi-llobregat
+, 
+sant
+-
+cugat
+-valles,santa-coloma-
+gramenet
+, santa-fe, santa-pola, 
+santomera
+, 
+sevilla
+, sueca,talavera-reina, 
+tarancon
+, 
+tarazona
+, tarragona, 
+terrassa
+, 
+teruel
+, 
+toledo
+,
+tomelloso
+, torre-pacheco, 
+torrejon-ardoz
+, 
+torremolinos
+, 
+torrent
+, 
+torrevieja
+,
+tortosa
+, 
+totana
+, 
+tremp
+, tres-cantos, 
+ubeda
+, 
+ubrique
+, 
+utebo
+, utrera,
+valdemoro
+, 
+valdepenas
+, valencia, 
+valls
+, 
+velez-malaga
+, velilla-manzanares,vera, 
+vicar
+, 
+vila-real
+, 
+viladecans
+, 
+vilafranca-penedes
+, 
+villacarrillo
+,
+villarrobledo
+, 
+villena
+, 
+vinaros
+, 
+xativa
+, yecla, zaragoza
+
+
+
+⚠️ Aunque las 
+URLs
+ y slugs sean iguales, **el contenido textual de cada 
+landing
+ debe ser distinto** al de la web actual y al de la web hermana. Ver punto 2 (
+spintax
+).
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+2. SPINTAX para reescritura de contenido
+
+
+
+**NOTA**: aquí debes pegar el 
+spintax
+ que tu cliente te facilite. Manus.ai usará el 
+spintax
+ para generar contenido único por 
+landing
+ evitando 
+duplicate
+ 
+content
+ entre las 3 webs hermanas.
+
+
+
+
+2.1 
+Spintax
+ para la HOME, sustituye “Limpieza de Incendios” por la 
+Keyword
+ principal
+
+
+
+Aquí no poner ciudades ni España para dar la sensación 
+que
+ es en la ciudad donde el usuario esta-Está en el archivo 
+Spintax
+, 
+leelo
+ primero hay indicaciones dentro 
+
+
+
+
+2.2 
+Spintax
+ para las LANDINGS de ciudad sustituye “Limpieza de Incendios” por la 
+Keyword
+ principal
+
+
+
+Está en el archivo 
+Spintax
+, 
+leelo
+ primero hay indicaciones dentro
+
+
+2.3 
+Spintax
+ para las LANDINGS 
+servicio+ciudad
+ sustituye “Limpieza de Incendios” por la 
+Keyword
+ principal
+
+
+
+Están en el repositorio 
+
+
+
+Reglas para Manus.ai al procesar el 
+spintax
+:
+
+
+Resolver el 
+spintax
+ una vez por 
+landing
+ y luego enriquecer con datos locales (habitantes, código postal, polígono industrial, etc.).
+
+
+Nunca dejar dos 
+landings
+ con el mismo render del 
+spintax
+. Si por azar coinciden, regenerar.
+
+
+Variar la longitud del texto entre 500 y 900 palabras por 
+landing
+.
+
+
+────────────────────────────────────────────────────────────────────────────────
+
+
+
+3. 
+Imágenes
+
+
+
+
+Todas las imágenes las genera Manus.ai con IA (
+hero
+, iconos, fotos de servicios, fotos de equipos, etc.).
+
+
+Excepción: la sección /
+galeria
+/ (o equivalente) debe usar las fotos originales de trabajos reales que se proporcionarán aparte como archivos .
+jpg
+
+/.
+webp
+
+. Estas fotos van con marca de agua opcional y deben mostrarse en 
+grid
+ con 
+lightbox
+.
+
+
+Formato 
+obligatorio
+: 
+WebP
+ + JPG fallback. loading="lazy". width/height 
+siempre
+ 
+presentes
+ para 
+evitar
+ CLS.
+
+
+Peso máximo: 
+hero
+ &lt; 200 KB, miniaturas &lt; 60 KB.
+
+
+────────────────────────────────────────────────────────────────────────────────
+
+
+
+4. 
+Repositorios
+ GitHub y deploy
+
+
+
+Galaxia → repositorio: https://github.com/LonginosMagano/Galaxia
+
+
+
+
+
+5. Datos GBP (Google Business 
+Profile
+) ya creados
+
+
+
+
+Galaxia → https://maps.app.goo.gl/adiBEYjzzPVDSZbp7
+
+
+
+Estos enlaces deben incrustarse en el 
+footer
+, en /contacto/ y en el 
+schema
+ 
+LocalBusiness
+ (
+hasMap
+).
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+🟠 PROMPT — limpiezasdeincendiosgalaxia.es (B2B / Industrial)
+
+
+
+ROL: Eres un desarrollador 
+frontend
+ especialista en SEO B2B y autoridad técnicapara webs de servicios industriales en España.OBJETIVO: Crear una web estática 
+hyperlocal
+ optimizada para peritos de seguros,directores de operaciones, administradores de fincas y jefes de mantenimientoque buscan una empresa SOLVENTE para grandes siniestros.================================================================================IDENTIDAD DE LA WEB================================================================================- Dominio: limpiezasdeincendiosgalaxia.es- Nombre comercial: Galaxia · Limpieza Técnica Post-Incendio- 
+Tagline
+: "Tecnología industrial para grandes siniestros"- Teléfono: &lt;&lt;NUEVO_TELEFONO_2&gt;&gt;   (DIFERENTE al de Génesis y al de la actual)- WhatsApp: &lt;&lt;NUEVO_WHATSAPP_2&gt;&gt;   (DIFERENTE)- Email: peritos@limpiezasdeincendiosgalaxia.es- Dirección postal: C. de la Fuente del Rey, 12, Moncloa - Aravaca, 28023 Madrid- CIF: &lt;&lt;CIF_2&gt;&gt;- Google Business 
+Profile
+: https://maps.app.goo.gl/adiBEYjzzPVDSZbp7- Repositorio GitHub: https://github.com/LonginosMagano/Galaxia- Cobertura: toda España, 25 provincias================================================================================KEYWORDS================================================================================KEYWORD PRINCIPAL:- "limpieza de humo y hollín"KEYWORDS SECUNDARIAS (usar en H2, párrafos, 
+alt
+):- descontaminación 
+post-incendio
+- limpieza técnica de incendios- limpieza industrial 
+post-incendio
+- desodorización con ozono industrial- eliminación de hollín en naves- recuperación de instalaciones tras incendio- informe pericial 
+post-incendio
+- HEPA H14, EPI III, hielo seco CO₂, 
+fogging
+ térmico- limpieza de incendios en hospitales / hoteles / navesDENSIDAD: 1-2% en cada 
+landing
+.================================================================================TARGET / TONO================================================================================USUARIO: particular o pequeño comercio que acaba de sufrir un incendio.Probablemente está en el móvil, abrumado, con los bomberos aún en la puerta ovolviendo a su casa quemada por primera vez. Necesita empatía, claridad radicaly velocidad de carga absurda perito de seguros / director de planta / administrador de fincas /jefe de mantenimiento. Está en una oficina, en escritorio, comparandoproveedores. Necesita demostraciones técnicas, datos duros, certificaciones,casos de éxito con números.TONO: profesional, técnico, frío con precisión quirúrgica. Usar "usted" oplural ("nuestros equipos"). Vocabulario técnico:- "Filtración HEPA H14"- "Protocolo IICRC S700"- "Norma UNE-EN 16636"- "Trazabilidad documental"- "Recuperación de pH neutro en superficies"EJEMPLOS DE COPY (estilo):- "Descontaminación de 2.000 m² de nave logística en 72 horas. 0 días de  parada productiva."- "Informe pericial entregado en formato compatible con sistemas de gestión  de siniestros de las principales compañías."- "EPI categoría III obligatorio. Trazabilidad de residuos según RD 833/1988."================================================================================ESTÉTICA (B2B / Industrial)================================================================================PALETA DE COLORES (modo oscuro premium):- Fondo base: gris pizarra profundo #121620- Fondo secundario: #1A1F2C- Texto base: blanco titanio #F8F9FA- Texto secundario: #9CA3AF- Acento primario (CTA): naranja seguridad industrial #FF5500- Acento secundario (info): azul eléctrico #0066FF- Acento éxito: verde técnico #10B981- Bordes: #2A3142- Sombras: 0 1px 0 
+rgba
+(255,255,255,0.05) 
+inset
+, 
+glow
+ en 
+hovers
+TIPOGRAFÍA:- 
+Display
+ (H1/H2): "Space 
+Grotesk
+" peso 700 (
+self-hosted
+)- Body: "Inter" peso 400/500 (
+self-hosted
+)- Mono (cifras técnicas): "
+JetBrains
+ Mono" peso 500- H1 
+clamp
+(2.4rem, 5vw, 3.6rem) UPPERCASE | H2 
+clamp
+(1.6rem, 3vw, 2.2rem)ICONOGRAFÍA:- Iconos lineales tipo Lucide o Tabler (
+stroke
+ 1.5px).- Cero emojis. SVG técnicos 
+inline
+.ESPÍRITU VISUAL:- Bento 
+Grid
+ (cuadrículas asimétricas tipo Apple/Linear).- Fotos de equipo con EPI, naves industriales, maquinaria.- Animaciones SUTILES (
+fade
+-in en 
+scroll
+).- Cifras grandes en mono (4.000 m² · 72h · -98% partículas).================================================================================ESTRUCTURA DE LA WEB (idéntica en cantidad a limpiezaporincendios.com.es)================================================================================PÁGINAS ESTRUCTURALES:- / (home corporativa)- /servicios/ + 7-9 subpáginas técnicas (limpieza-humo-
+hollin
+,  
+descontaminacion
+-
+post-incendio
+, limpieza-
+tecnica
+-naves,  
+desodorizacion
+-ozono-industrial, limpieza-laser, limpieza-hielo-seco,  informes-periciales)- /sectores/ + 7 sectoriales- /casos-de-
+exito
+/- /certificaciones/- /equipo-y-maquinaria/- /peritos/- /contacto/- /preguntas-
+tecnicas
+/- /blog/  (artículos técnicos)- /
+galeria
+/  (fotos reales de trabajos, no IA)- /privacidad/, /cookies/, /aviso-legal/LANDINGS (611 totales, MISMAS 
+URLs
+ que limpiezaporincendios.com.es):- 252 
+landings
+ de ciudad pura: /limpieza-incendios-&lt;ciudad&gt;/- 325 
+landings
+ 
+servicio+ciudad
+: /limpieza-incendios-&lt;servicio&gt;-&lt;provincia&gt;/  con los 13 servicios y 25 provincias indicadas en `landings.txt`.&gt; Aunque las 
+URLs
+ sean iguales que en Génesis y en la web actual, el TONO de&gt; cada 
+landing
+ debe ser técnico-B2B: cifras, normativa, protocolos.================================================================================HOME: ESTRUCTURA DETALLADA================================================================================1. TOPBAR (fondo #0A0F18): "Operativos 24/7 · Toda España · ISO 9001" +   CTA "ATENCIÓN URGENTE 24H · &lt;&lt;TELEFONO&gt;&gt;" (naranja).2. HEADER (oscuro 
+semi-transparente
+ con 
+backdrop
+ 
+blur
+):   - Logo monocromático "GALAXIA" letras espaciadas   - Menú: Servicios | Sectores | Casos | Galería | Peritos | Contacto   - CTA: [SOLICITAR INFORME TÉCNICO]3. HERO (Bento, no centrado clásico):   - Bloque 60%: H1 "Limpieza de humo y hollín · Tecnología industrial     para grandes siniestros"   - Bloque 40%: 
+stats
+ grandes en mono ("+500 siniestros · 25 años ·     -98% partículas certificado")   - 2 
+CTAs
+: [Solicitar informe técnico] naranja · [Ver casos de éxito]4. "TECNOLOGÍA APLICADA" — Bento 
+Grid
+ 6 bloques (HEPA, hielo seco, láser,   ozono, 
+fogging
+, EPI III).5. "SECTORES DE ACTIVIDAD" — 7 sectores 4×2.6. "CASO DE ÉXITO DESTACADO" — full-
+width
+ antes/después con ficha técnica.7. "PROCESO TÉCNICO" — 5 pasos numerados.8. "PERITOS Y ASEGURADORAS" — bloque dedicado + CTA "Acceso peritos".9. "CERTIFICACIONES Y NORMATIVA" — logos/
+badges
+.10. GALERÍA: 
+grid
+ técnico con fotos REALES (no IA) y 
+captions
+ de ficha técnica.11. FAQ TÉCNICA (8 preguntas con 
+FAQPage
+ 
+schema
+).12. CTA FINAL CORPORATIVO: "Visita técnica en &lt;4h en toda España" + Form.13. COBERTURA — mapa estilizado o lista compacta.14. FOOTER técnico:    - 5 columnas: empresa, servicios, sectores, peritos, legal    - Detalles fiscales completos: dirección REAL (C. de la Fuente del Rey, 12,      Moncloa - Aravaca, 28023 Madrid) + enlace GBP    - LinkedIn (B2B)15. SIN 
+floating
+ WhatsApp gigantes. Solo botón discreto inferior derecha    "Contactar".================================================================================STACK TÉCNICO================================================================================- HTML5 estático.- CSS 
+inline
+ en cada HTML (
+max
+ 25 KB).- Self-host fuentes (Space 
+Grotesk
+ + Inter + 
+JetBrains
+ Mono).- JS: hamburguesa + 
+accordion
+ FAQ + 
+Intersection
+ 
+Observer
+ + 
+lightbox
+ galería.- 
+WebP
+ + 
+lazy
+ 
+loading
+ + dimensiones reservadas.================================================================================IMÁGENES================================================================================- TODAS las imágenes (
+hero
+, sectores, bento, equipo trabajando, etc.)  generadas por Manus.ai con IA, EXCEPTO la sección /
+galeria
+/.- /
+galeria
+/ usa las fotos reales que se entregarán aparte (JPG/
+WebP
+). Manus  solo maqueta el 
+grid
+ + 
+lightbox
+ + 
+captions
+ técnicos.================================================================================CONTENIDO: SPINTAX================================================================================
+Spintax
+ facilitado aparte (HOME + LANDING ciudad + LANDING 
+servicio+ciudad
+).Manus debe enriquecer cada 
+landing
+ con:- Datos del tejido industrial local (polígonos, número de naves &gt;1.000 m²,  sectores predominantes)- Casos típicos de siniestro- Bomberos provinciales- Distancia desde Madrid (sede en Moncloa-Aravaca)Mínimo 600 palabras por 
+landing
+. Tono técnico-B2B.================================================================================SEO TÉCNICO================================================================================Idéntico al de Génesis con estos 
+schemas
+ adicionales:- 
+ProfessionalService
+ 
+schema
+ en home (no 
+LocalBusiness
+ genérico)- Service con 
+audience
+ 
+BusinessAudience
+ (peritos, directores)- 
+Article
+ 
+schema
+ en blog técnico (no 
+BlogPosting
+ genérico)- 
+ItemList
+ en /casos-de-
+exito
+/- 
+LocalBusiness
+ con 
+hasMap
+ = URL del GBP de Galaxia================================================================================PERFORMANCE TARGETS================================================================================- LCP &lt; 2.0s desktop, &lt; 3s móvil.- FCP &lt; 1.5s. CLS &lt; 0.05. TBT &lt; 250ms.================================================================================COSAS QUE NO QUIERO================================================================================- NADA de emojis ni tono coloquial.- NO "limpieza profesional" genérica. Siempre "limpieza técnica" o  "
+post-incendio
+".- NO mostrar precios. Solo "presupuesto previa visita técnica".- NO referencias a las webs hermanas.- NO usar imágenes ni textos de las webs hermanas.================================================================================ENTREGA================================================================================Estructura completa lista para:1. Subir a hosting estático vía SFTP.2. Push a https://github.com/LonginosMagano/GalaxiaIncluye README.md con:- Despliegue- Cómo añadir provincias/sectores- Cómo añadir caso de éxito- Datos pendientes (teléfono, WhatsApp, CIF)
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+🔒 Recomendaciones operativas 
+anti-detección
+ SEO
+
+
+
+
+Whois privado en ambos dominios.
+
+
+
+Hostings
+ 
+distintos
+:
+   - Actual (limpiezaporincendios.com.es) → DreamHost
+   - Génesis → Hostinger / Webempresa / SiteGround
+   - Galaxia → OVH / Hetzner
+
+
+NO usar la misma cuenta de Google Search Console para las 3 webs.
+
+
+NO usar el mismo Google 
+Analytics
+ ID ni el mismo GTM.
+
+
+Teléfonos y 
+WhatsApps
+ distintos en cada web (3 líneas SIP separadas o
+   
+numeración
+ virtual).
+
+
+CIF diferente si es factible. Si no, 
+diferenciar
+ 
+marcas
+ 
+claramente
+
+   (logo, dirección, teléfono).
+
+
+NO publicar al mismo tiempo: Génesis primero (mes 1), Galaxia 3-4 meses
+   
+después
+.
+
+
+
+Backlink
+ 
+profile
+ distinto: no enlazar las webs entre sí ni desde
+
+   directorios donde aparezca la web actual.
+
+
