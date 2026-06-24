@@ -26,7 +26,10 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           port: 21
           protocol: ftp
-          server-dir: /limpiezaincendios.com/public_html/
+          # El usuario FTP ya aterriza dentro de limpiezaincendios.com/public_html,
+          # así que el destino es la raíz de login ('./'). Poner aquí la ruta
+          # completa la duplicaba (.../public_html/limpiezaincendios.com/public_html).
+          server-dir: ./
           local-dir: ./
           # No subir fuentes ni artefactos del generador (sí van robots.txt,
           # sitemap.xml, favicon.ico, site.webmanifest, assets/ y el HTML).
