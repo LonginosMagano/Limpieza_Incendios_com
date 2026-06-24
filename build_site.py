@@ -8,7 +8,9 @@ No incorpora datos fiscales por indicación expresa del cliente.
 """
 from __future__ import annotations
 
+import datetime
 import html
+import hashlib
 import json
 import math
 import os
@@ -131,6 +133,8 @@ def delegation_local_business(d: dict) -> dict:
         'name': d['name'],
         'parentOrganization': {'@type': 'Organization', 'name': BRAND, 'url': DOMAIN},
         'url': DOMAIN,
+        'image': DOMAIN + '/assets/img/hero-industrial.jpg',
+        'priceRange': '€€',
         'telephone': PHONE_TEL,
         'email': EMAIL,
         'address': {
@@ -474,6 +478,14 @@ SERVICE_LABELS = {
     'restaurantes': 'restaurantes y cocinas profesionales',
     'salas-tecnicas': 'salas técnicas y CPD'
 }
+# Etiquetas cortas para los <title> (las largas truncan keyword/provincia).
+SERVICE_LABELS_SHORT = {
+    'bares': 'bares', 'bodegas': 'bodegas', 'centros-sanitarios': 'centros sanitarios',
+    'colegios': 'colegios', 'comercios': 'comercios', 'comunidades': 'comunidades',
+    'garajes': 'garajes', 'hoteles': 'hoteles', 'naves': 'naves industriales',
+    'oficinas': 'oficinas', 'residencias': 'residencias', 'restaurantes': 'restaurantes',
+    'salas-tecnicas': 'salas técnicas',
+}
 SPINTAX_FILES = {
     'residencias': 'spintax-01-residencias-mayores.txt',
     'naves': 'spintax-02-naves-industriales.txt',
@@ -601,26 +613,31 @@ def deterministic_choice(options: List[str], seed: str) -> str:
     return r.choice(options)
 
 
+def pick_n(options: List[str], n: int, seed: str) -> List[str]:
+    """Selección determinista de n elementos distintos (reproducible)."""
+    r = random.Random(str(seed) + SEED_SALT)
+    return r.sample(options, min(n, len(options)))
+
+
+def dhash(s: str) -> int:
+    """Hash entero estable y reproducible entre ejecuciones (a diferencia de
+    hash() builtin, que Python aleatoriza por proceso vía PYTHONHASHSEED)."""
+    return int.from_bytes(hashlib.md5((str(s) + SEED_SALT).encode()).digest()[:8], 'big')
+
+
 def resolve_spintax(text: str, seed: int) -> str:
     r = random.Random(str(seed) + SEED_SALT)
-    def repl_once(s: str) -> Tuple[str, bool]:
-        start = s.rfind('{')
-        if start == -1:
-            return s, False
-        end = s.find('}', start)
-        if end == -1:
-            return s, False
-        body = s[start+1:end]
-        parts = body.split('|')
-        return s[:start] + r.choice(parts).strip() + s[end+1:], True
-    changed = True
-    loops = 0
-    while changed and loops < 50000:
-        text, changed = repl_once(text)
-        loops += 1
-    # Si algún bloque complejo queda sin resolver por formato irregular, se elimina
-    # de forma conservadora para no publicar llaves ni pipes visibles.
-    text = re.sub(r'\{[^{}<>]{0,500}\|[^{}<>]{0,500}\}', '', text)
+    # Resuelve siempre el grupo MÁS INTERNO ({...} sin llaves anidadas dentro),
+    # de izquierda a derecha. Es inmune a llaves huérfanas (una '{' sin '}' no
+    # casa el patrón y no detiene la resolución del resto del texto).
+    pattern = re.compile(r'\{([^{}]*)\}')
+    for _ in range(50000):
+        m = pattern.search(text)
+        if not m:
+            break
+        choice = r.choice(m.group(1).split('|')).strip()
+        text = text[:m.start()] + choice + text[m.end():]
+    # Limpieza conservadora de cualquier llave/pipe residual (llaves sin pareja).
     text = text.replace('{', '').replace('}', '').replace('|', ' ')
     return text
 
@@ -660,7 +677,12 @@ def read_spintax_for(service: str | None = None) -> str:
     for key, value in SPINTAX_GLOBALS.items():
         text = text.replace('{{{' + key + '}}', value).replace('{{' + key + '}}', value)
     text = text.replace('[EMPRESA]', SHORT).replace('Limpieza PostIncendio', SHORT)
-    return text[:9000]
+    text = text[:9000]
+    # Evita dejar una llave de apertura sin cierre tras el corte a 9000 car.
+    # (causaba que el resolutor abortara y se vaciaran los grupos spintax).
+    if text.count('{') > text.count('}'):
+        text = text[:text.rfind('{')]
+    return text
 
 
 # Perfiles de ciudades importantes para inyectar contenido único y humano
@@ -1111,42 +1133,38 @@ def featured_snippet_block(label: str, service: str | None = None) -> str:
         f'irreversible en las superficies.'
     )
 
-    # Formato 1: Párrafo directo
-    para_format = f"""<div class='featured-snippet' itemscope itemtype='https://schema.org/FAQPage'>
-    <h3 itemprop='name'>¿Necesitas una limpieza de incendios en {esc(label)}?</h3>
-    <p itemprop='description'>{esc(snippet_answer)}</p>
+    # Formato 1: Párrafo directo (HTML plano; el FAQ estructurado va por JSON-LD,
+    # no por microdata, para no duplicar/malformar FAQPage).
+    para_format = f"""<div class='featured-snippet'>
+    <h2>¿Necesitas una limpieza de incendios en {esc(label)}?</h2>
+    <p>{esc(snippet_answer)}</p>
     </div>"""
 
-    # Formato 2: Lista de pasos (How-To Schema)
-    steps_format = f"""<div class='featured-snippet steps-format' itemscope itemtype='https://schema.org/HowTo'>
-    <h3 itemprop='name'>Proceso de limpieza post incendio en {esc(label)}</h3>
+    # Formato 2: Lista de pasos (HTML plano; HowTo está deprecado en Google).
+    steps_format = f"""<div class='featured-snippet steps-format'>
+    <h2>Proceso de limpieza post incendio en {esc(label)}</h2>
     <ol class='snippet-steps'>
-        <li itemprop='step' itemscope itemtype='https://schema.org/HowToStep'>
-            <strong itemprop='name'>1. Inspección técnica</strong>
-            <span itemprop='text'>Evaluamos daño, accesos, ventilación y riesgos en {label}.</span>
+        <li><strong>1. Inspección técnica</strong>
+            <span>Evaluamos daño, accesos, ventilación y riesgos en {label}.</span>
         </li>
-        <li itemprop='step' itemscope itemtype='https://schema.org/HowToStep'>
-            <strong itemprop='name'>2. Contención y protección</strong>
-            <span itemprop='text'>Sectorización de zonas no afectadas con cortinas de presión.</span>
+        <li><strong>2. Contención y protección</strong>
+            <span>Sectorización de zonas no afectadas con cortinas de presión.</span>
         </li>
-        <li itemprop='step' itemscope itemtype='https://schema.org/HowToStep'>
-            <strong itemprop='name'>3. Retirada de residuos</strong>
-            <span itemprop='text'>Aspiración HEPA H14, hielo seco o láser según superficie.</span>
+        <li><strong>3. Retirada de residuos</strong>
+            <span>Aspiración HEPA H14, hielo seco o láser según superficie.</span>
         </li>
-        <li itemprop='step' itemscope itemtype='https://schema.org/HowToStep'>
-            <strong itemprop='name'>4. Desodorización</strong>
-            <span itemprop='text'>Ozono industrial, fogging o neutralización de pH.</span>
+        <li><strong>4. Desodorización</strong>
+            <span>Ozono industrial, fogging o neutralización de pH.</span>
         </li>
-        <li itemprop='step' itemscope itemtype='https://schema.org/HowToStep'>
-            <strong itemprop='name'>5. Informe pericial</strong>
-            <span itemprop='text'>Documentación técnica con fotografías y alcance ejecutado.</span>
+        <li><strong>5. Informe pericial</strong>
+            <span>Documentación técnica con fotografías y alcance ejecutado.</span>
         </li>
     </ol>
     </div>"""
 
-    # Formato 3: Tabla comparativa (Services)
+    # Formato 3: Tabla comparativa
     table_format = f"""<div class='featured-snippet table-format'>
-    <h3>Métodos de limpieza de incendios en {esc(label)}</h3>
+    <h2>Métodos de limpieza de incendios en {esc(label)}</h2>
     <table class='snippet-table' border='1'>
         <thead>
             <tr>
@@ -1182,7 +1200,7 @@ def featured_snippet_block(label: str, service: str | None = None) -> str:
 
     # Rotar formato según hash del label para variación
     formats = [para_format, steps_format, table_format]
-    choice_idx = abs(hash(label)) % len(formats)
+    choice_idx = dhash(label) % len(formats)
     return formats[choice_idx]
 
 
@@ -1192,7 +1210,42 @@ def city_profile_paragraphs(slug: str, label: str) -> str:
     landing principal (item 8 del backlog)."""
     p = CITY_PROFILES.get(slug)
     if not p:
-        return ''
+        # Perfil genérico para ciudades sin ficha propia: contenido único por
+        # ciudad a partir de las señales deterministas de local_context.
+        loc = local_context(slug)
+        g_h2 = deterministic_choice([
+            f"Limpieza de incendios en {label} y su entorno",
+            f"Cómo intervenimos tras un incendio en {label}",
+            f"Servicio de limpieza post incendio en {label}",
+            f"Qué tener en cuenta tras un incendio en {label}",
+        ], slug + 'gp-h2')
+        g_h3 = deterministic_choice([
+            f"Nuestro método en {label}",
+            f"De la llamada a la entrega del informe en {label}",
+            f"Cómo organizamos el servicio en {label}",
+        ], slug + 'gp-h3')
+        return (
+            f"<h2>{g_h2}</h2>"
+            f"<p>En {label} intervenimos en inmuebles vinculados a {loc['industrial']}, "
+            f"donde cada hora parado por humo u hollín tiene un coste directo. Tras un "
+            f"incendio, lo primero es estabilizar la zona, contener las partículas y "
+            f"separar el hollín graso del seco para decidir la técnica correcta sin "
+            f"arrastrar contaminación a zonas limpias.</p>"
+            f"<p>Los siniestros más frecuentes en {label} se relacionan con {loc['risk']}. "
+            f"Por eso la inspección inicial valora la carga de hollín, hasta dónde ha "
+            f"llegado el humo por conductos y huecos, el riesgo residual y la "
+            f"compatibilidad con la actividad del inmueble. Cuando el siniestro lo exige, "
+            f"nos coordinamos con {loc['fire']}.</p>"
+            f"<h3>{g_h3}</h3>"
+            f"<p>Reservamos una ventana de visita técnica de {loc['hours']} según los "
+            f"accesos y el nivel de contaminación. A partir de ahí dimensionamos personal, "
+            f"maquinaria HEPA H14, ozono o hidroxilo cuando el espacio lo admite, hielo "
+            f"seco para superficies carbonizadas y EPI categoría III si hace falta. El "
+            f"trabajo se entrega con informe técnico —fases, fotografías de antes y "
+            f"después y materiales tratados— para que los gremios posteriores y la "
+            f"aseguradora trabajen sobre una base clara. En {label} no reformamos ni "
+            f"reparamos: nuestra parte es la limpieza de incendios y la descontaminación.</p>"
+        )
     h_zonas = deterministic_choice([
         f"Zonas y particularidades de {label}",
         f"Cómo es {label} y qué implica tras un incendio",
@@ -1338,13 +1391,20 @@ def landing_copy(city_or_province: str, service: str | None, seed: int) -> str:
     <p>En {label} reservamos una ventana de visita de {loc['hours']} en función de los accesos, la disponibilidad de suministro, la autorización pericial y el nivel de contaminación. Damos prioridad a inmuebles con actividad económica, zonas comunes críticas, salas técnicas y espacios donde cada día de parada encarece el siniestro.</p>
     <p>El trabajo se cierra con un resumen técnico, la relación de zonas tratadas y recomendaciones para los gremios que entran después. Cuando hay aseguradora de por medio, preparamos información lista para la gestión del siniestro: fotografías, alcance, fases ejecutadas y observaciones relevantes.</p>
     """
+    faq_pool = [
+        ('¿La limpieza de incendios elimina también el olor a humo?', 'Sí, pero hay que combinar retirada del residuo, filtración y tratamiento molecular. Si se aplica ozono o fogging sin retirar antes la carga de hollín, el olor termina reapareciendo.'),
+        ('¿Se puede empezar la limpieza post incendio antes de cerrar la peritación?', 'Lo habitual es documentar primero el estado inicial y coordinar las autorizaciones. Galaxia organiza una visita técnica para delimitar daños sin comprometer la trazabilidad del siniestro.'),
+        ('¿Trabajan en horario de urgencia?', 'Sí. La respuesta 24/7 se centra en estabilizar, contener las partículas, evaluar los accesos y planificar la recuperación del inmueble.'),
+        (f'¿Cuánto cuesta una limpieza de incendios en {label}?', 'No damos precios cerrados por teléfono: cada siniestro depende de superficie, carga de hollín, accesos y ventilación. Tras la visita técnica entregamos un presupuesto detallado.'),
+        ('¿El humo y el hollín pueden dañar la instalación eléctrica?', 'Sí. El hollín es conductor y corrosivo; por eso aislamos cuadros y equipos, y recomendamos revisión eléctrica antes de volver a dar tensión a las zonas afectadas.'),
+        ('¿Retiráis también los muebles y enseres quemados?', 'Gestionamos la retirada y segregación de residuos de combustión. Lo que es recuperable se limpia y desodoriza; lo que no, se retira documentado para la peritación.'),
+        (f'¿En cuánto tiempo podéis intervenir en {label}?', f'Coordinamos la visita técnica en horas. En {label} priorizamos los siniestros con actividad económica o riesgo para terceros y planificamos la intervención por fases.'),
+        ('¿Trabajáis con mi compañía de seguros?', 'Sí. Preparamos informe técnico con fotografías, alcance y fases ejecutadas, compatible con la gestión del siniestro por parte del perito y la aseguradora.'),
+    ]
+    faq_items = ''.join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in pick_n(faq_pool, 4, page_slug + 'faqset'))
     faq = f"""
     <h2>{h_faq}</h2>
-    <div class='faq'>
-      <details><summary>¿La limpieza de incendios elimina también el olor a humo?</summary><p>Sí, pero hay que combinar retirada del residuo, filtración y tratamiento molecular. Si se aplica ozono o fogging sin retirar antes la carga de hollín, el olor termina reapareciendo.</p></details>
-      <details><summary>¿Se puede empezar la limpieza post incendio antes de cerrar la peritación?</summary><p>Lo habitual es documentar primero el estado inicial y coordinar las autorizaciones. Galaxia organiza una visita técnica para delimitar daños sin comprometer la trazabilidad del siniestro.</p></details>
-      <details><summary>¿Trabajan en horario de urgencia?</summary><p>Sí. La respuesta 24/7 se centra en estabilizar, contener las partículas, evaluar los accesos y planificar la recuperación del inmueble.</p></details>
-    </div>
+    <div class='faq'>{faq_items}</div>
     """
     # Reordenado determinista de los bloques centrales para romper el patrón
     # estructural respecto al sitio de origen (intro siempre primero, FAQ al final).
@@ -1387,17 +1447,27 @@ def common_footer(prefix: str) -> str:
       <div><h4>Contacto</h4><a href='tel:{phone_clean}'>{PHONE}</a><a href='https://wa.me/{whatsapp_clean}'>WhatsApp técnico</a><a href='mailto:{EMAIL}'>{EMAIL}</a><a href='{prefix}privacidad/'>Privacidad</a><a href='{prefix}cookies/'>Cookies</a><a href='{prefix}aviso-legal/'>Aviso legal</a></div>
         </div>
       <div class='footer-meta'><small>Galaxia forma parte del <a href='{DOMAIN}' rel='noopener'>Grupo Limpieza de Incendios Galaxia</a> · &copy; {BRAND}</small></div>
-      </footer><script>{JS}</script>
+      </footer><script defer src='{prefix}assets/app.js'></script>
     """
 
 
-def callback_form(prefix: str, location: str = '') -> str:
+def callback_form(prefix: str, location: str = '', variant: str = 'top') -> str:
     place_value = esc(location)
+    # Dos instancias por landing con copy distinto; solo la superior lleva <h2>
+    # (la inferior usa un encabezado no semántico) para no duplicar el H2.
+    if variant == 'top':
+        eyebrow = 'Nosotros te llamamos'
+        heading = "<h2>Te llamamos para valorar tu incendio</h2>"
+        lead = 'Déjanos tu nombre, teléfono y población y te llamamos para valorar el siniestro y orientar los siguientes pasos.'
+    else:
+        eyebrow = 'Solicita tu valoración'
+        heading = "<p class='cta-head'>¿Hablamos? Te llamamos en minutos</p>"
+        lead = 'Cuéntanos qué ha pasado y dónde: coordinamos la visita técnica y los siguientes pasos del siniestro.'
     return f"""
-    <section class='panel hero-copy'>
-      <div class='eyebrow'>Nosotros te llamamos</div>
-      <h2>Nosotros te llamamos</h2>
-      <p>Déjanos tu nombre, teléfono y población y te llamamos para valorar el siniestro y orientar los siguientes pasos.</p>
+    <section class='panel hero-copy' aria-label='Formulario de contacto'>
+      <div class='eyebrow'>{eyebrow}</div>
+      {heading}
+      <p>{lead}</p>
       <form class='callback-form' action='https://formsubmit.co/{FORMSUBMIT_EMAIL}' method='post'>
         <div class='form-grid'>
           <label>Nombre<input type='text' name='Nombre' autocomplete='name' placeholder='Nombre y apellidos' required></label>
@@ -1408,7 +1478,7 @@ def callback_form(prefix: str, location: str = '') -> str:
         <input type='hidden' name='_template' value='table'>
         <input type='hidden' name='_captcha' value='false'>
         <input type='hidden' name='_next' value='{DOMAIN}/contacto/?ok=1'>
-        <input type='hidden' name='Origen' value='Limpiezas Galaxia · {DOMAIN}'>
+        <input type='hidden' name='Origen' value='Limpiezas Galaxia · {DOMAIN} ({variant})'>
         <input type='text' name='_honey' style='display:none' tabindex='-1' autocomplete='off'>
         <button class='cta' type='submit'>Nosotros te llamamos</button>
         <small>Tus datos solo se usan para devolverte la llamada (RGPD). También puedes llamar al {PHONE}.</small>
@@ -1443,7 +1513,7 @@ def landing_image(prefix: str, label: str, service: str | None = None) -> str:
         img = SERVICE_IMAGE_MAP[service]
         service_phrase = f'para {SERVICE_LABELS[service]} '
     else:
-        img = LANDING_POOL[hash(label) % len(LANDING_POOL)]
+        img = LANDING_POOL[dhash(label) % len(LANDING_POOL)]
         service_phrase = ''
     alt = (
         f'{BASE_KEYWORD} {service_phrase}en {label}: '
@@ -1463,9 +1533,13 @@ def html_page(page: Page) -> str:
     schema_html = ''
     if page.schema:
         schema_html = f"<script type='application/ld+json'>{json.dumps(page.schema, ensure_ascii=False)}</script>"
-    title = page.title if len(page.title) < 62 else page.title[:59] + '...'
-    desc = page.description[:158]
-    preload_lcp = f"<link rel='preload' as='image' href='{prefix}assets/img/hero-industrial.jpg' imagesrcset='{prefix}assets/img/hero-industrial.webp' imagesizes='100vw'>" if page.url != '/' else "<link rel='preload' as='image' href='assets/img/hero-industrial.jpg' imagesrcset='assets/img/hero-industrial.webp' imagesizes='100vw'>"
+    # Truncado por palabra (sin '...' literal) para no cortar a mitad de palabra
+    # ni meter puntos suspensivos dentro del <title>/<meta>.
+    title = page.title if len(page.title) <= 60 else page.title[:60].rsplit(' ', 1)[0]
+    desc = page.description if len(page.description) <= 158 else page.description[:158].rsplit(' ', 1)[0]
+    # Preload del LCP alineado con el <img> real del hero (mismo .jpg, sin
+    # imagesrcset que provocaba doble descarga jpg+webp).
+    preload_lcp = f"<link rel='preload' as='image' href='{prefix}assets/img/hero-industrial.jpg' fetchpriority='high'>"
     return f"""<!doctype html>
 <html lang='es'>
 <head>
@@ -1492,7 +1566,7 @@ def html_page(page: Page) -> str:
 <meta name='apple-mobile-web-app-title' content='Galaxia'>
 <meta name='application-name' content='Galaxia'>
 {preload_lcp}
-<style>{CSS}</style>
+<link rel='stylesheet' href='{prefix}assets/app.css'>
 {schema_html}
 </head>
 <body>{common_header(prefix)}{page.body}{common_footer(prefix)}</body></html>"""
@@ -1506,8 +1580,8 @@ def write_page(page: Page) -> None:
 
 def hero_block(title: str, lead: str, prefix_img: str = 'assets/img/hero-industrial.jpg') -> str:
     return f"""
-    <main class='hero'><div class='wrap grid hero-grid'>
-      <section class='panel hero-copy'><div class='eyebrow'>B2B · post-incendio · peritos y aseguradoras</div><h1>{title}</h1><p class='lead'>{lead}</p><div class='actions'><a class='cta' href='contacto/'>Solicitar informe técnico</a><a class='ghost' href='casos-de-exito/'>Ver casos de éxito</a></div><div class='grid stats'><div class='stat'><strong>+500</strong><span>siniestros evaluados</span></div><div class='stat'><strong>25</strong><span>provincias prioritarias</span></div><div class='stat'><strong>-98%</strong><span>partículas objetivo</span></div></div></section>
+    <main id='main-content' class='hero'><div class='wrap grid hero-grid'>
+      <section class='panel hero-copy'><div class='eyebrow'>B2B · post-incendio · peritos y aseguradoras</div><h1>{title}</h1><p class='lead'>{lead}</p><div class='actions'><a class='cta' href='contacto/'>Solicitar informe técnico</a><a class='ghost' href='casos-de-exito/'>Ver casos de éxito</a></div><div class='grid stats'><div class='stat'><strong>24/7</strong><span>respuesta ante siniestros</span></div><div class='stat'><strong>HEPA H14</strong><span>filtración de partículas</span></div><div class='stat'><strong>España</strong><span>cobertura nacional</span></div></div></section>
       <figure class='panel hero-img reveal'><img src='{prefix_img}' width='1280' height='720' loading='eager' alt='Equipo técnico de Galaxia durante una limpieza de incendios en nave industrial'></figure>
     </div></main>"""
 
@@ -1540,11 +1614,9 @@ def home_page() -> Page:
     <section class='section'><div class='wrap panel hero-copy'><div class='eyebrow'>Peritos y aseguradoras</div><h2>Informes compatibles con gestión de siniestros</h2><p>Preparamos documentación técnica con fotografías, alcance, fases ejecutadas, observaciones y prioridades de recuperación para facilitar la toma de decisiones.</p><a class='cta' href='peritos/'>Acceso peritos</a></div></section>
     <section class='section'><div class='wrap'><div class='section-head'><div><div class='eyebrow'>Galería provisional</div><h2>Intervenciones técnicas y equipos</h2></div><p>Estas imágenes son provisionales generadas para maquetación. Se sustituirán por trabajos reales cuando estén disponibles.</p></div>{gallery_grid('')}</div></section>
     <section class='section faq'><div class='wrap content'><div class='eyebrow'>FAQ técnica</div><h2>Preguntas frecuentes</h2>{faqs}</div></section>
-    <section class='section'><div class='wrap'><div class='section-head'><div><div class='eyebrow'>Testimonios</div><h2>Lo que dicen quienes han trabajado con nosotros</h2></div></div><div class='grid testimonials'>{testimonials_html()}</div></div></section>
     <section class='section'><div class='wrap'>{delegations_html('')}</div></section>
     <section class='section'><div class='wrap'><div class='section-head'><div><div class='eyebrow'>Cobertura</div><h2>Provincias prioritarias en {len(set([CITY_PROVINCE[c] for c in CITIES if c in CITY_PROVINCE]))} territorios</h2></div></div><div class='coverage'>{''.join(f'<a href="limpieza-incendios-{p}/">{slug_title(p)}</a><br>' for p in PROVINCES)}</div></div></section>
     """
-    avg_rating = round(sum(t['rating'] for t in TESTIMONIALS) / len(TESTIMONIALS), 1)
     schema = {
         "@context": "https://schema.org",
         "@graph": [
@@ -1558,14 +1630,8 @@ def home_page() -> Page:
                 "description": TAGLINE,
                 "sameAs": [GBP],
                 "areaServed": "España",
-                "subOrganization": [delegation_local_business(d) for d in DELEGATIONS],
-                "aggregateRating": {
-                    "@type": "AggregateRating",
-                    "ratingValue": avg_rating,
-                    "bestRating": 5,
-                    "reviewCount": len(TESTIMONIALS),
-                },
-                "review": testimonials_schema(),
+                # Referencia por @id; el objeto completo va a nivel de @graph.
+                "subOrganization": [{"@id": f'{DOMAIN}/#{d["id"]}'} for d in DELEGATIONS],
             },
             *[delegation_local_business(d) for d in DELEGATIONS],
             faq_schema([(q, a) for q, a in [
@@ -1812,7 +1878,7 @@ def simple_page(url: str, title: str, h: str, desc: str) -> Page:
         links = ''.join(f"<a href='{prefix}limpieza-incendios-{s}-madrid/'>Madrid · {SERVICE_LABELS[s]}</a>" for s in SERVICES[:6])
         extra = f"<div class='local-links'>{links}</div>"
     body = f"""
-    <main class='section'><div class='wrap content'><div class='breadcrumb'><a href='{prefix}'>Inicio</a> / {esc(h)}</div><div class='eyebrow'>Galaxia · documentación técnica</div><h1>{esc(h)}</h1><p class='lead'>{esc(desc)}</p><p>Esta página forma parte del proyecto de Galaxia dedicado a la <strong>{BASE_KEYWORD}</strong>: limpieza post incendio, descontaminación de humo y hollín, desodorización industrial e informes técnicos. Está redactada para profesionales que necesitan claridad, trazabilidad y rapidez de respuesta.</p><p>Nuestro método parte de una inspección previa y continúa con la protección de las zonas no afectadas, filtración HEPA H14, tratamiento del hollín, control de olores, retirada de residuos y entrega de documentación. No publicamos precios cerrados porque cada siniestro obliga a medir superficie, carga contaminante, accesos, ventilación y coordinación con la peritación.</p>{extra}</div></main>"""
+    <main id='main-content' class='section'><div class='wrap content'><div class='breadcrumb'><a href='{prefix}'>Inicio</a> / {esc(h)}</div><div class='eyebrow'>Galaxia · documentación técnica</div><h1>{esc(h)}</h1><p class='lead'>{esc(desc)}</p><p>Esta página forma parte del proyecto de Galaxia dedicado a la <strong>{BASE_KEYWORD}</strong>: limpieza post incendio, descontaminación de humo y hollín, desodorización industrial e informes técnicos. Está redactada para profesionales que necesitan claridad, trazabilidad y rapidez de respuesta.</p><p>Nuestro método parte de una inspección previa y continúa con la protección de las zonas no afectadas, filtración HEPA H14, tratamiento del hollín, control de olores, retirada de residuos y entrega de documentación. No publicamos precios cerrados porque cada siniestro obliga a medir superficie, carga contaminante, accesos, ventilación y coordinación con la peritación.</p>{extra}</div></main>"""
     schema = None
     if url.startswith('/blog/') and url != '/blog/':
         schema = {"@context":"https://schema.org","@type":"Article","headline":h,"author":{"@type":"Organization","name":BRAND},"publisher":{"@type":"Organization","name":BRAND}}
@@ -1834,13 +1900,13 @@ def landing_pages() -> List[Page]:
         'Limpieza de incendios en {l} · Galaxia · 24/7',
         'Limpieza post incendio en {l} | Galaxia',
         'Galaxia · Limpieza de incendios en {l}',
-        '{l}: limpieza de incendios profesional | Galaxia',
+        '{l}: limpieza de incendios | Galaxia',
     ]
     pages: List[Page] = []
     for i, city in enumerate(CITIES):
         label = slug_title(city)
         url = f'/limpieza-incendios-{city}/'
-        h = abs(hash('t' + city))
+        h = dhash('t' + city)
         title = title_templates[h % len(title_templates)].format(l=label)
         desc = desc_templates[h % len(desc_templates)].format(l=label)
         body = landing_body(url, label, landing_copy(city, None, 1000+i), city, None)
@@ -1852,18 +1918,20 @@ def landing_pages() -> List[Page]:
             label = slug_title(province)
             url = f'/limpieza-incendios-{service}-{province}/'
             service_label = SERVICE_LABELS[service]
+            service_short = SERVICE_LABELS_SHORT.get(service, service_label)
+            # Títulos compactos (<=60 car.): keyword + sector corto + provincia.
             sv_title_templates = [
-                'Limpieza de incendios en {s} · {l} | Galaxia',
-                'Limpieza post incendio en {s} ({l}) · Galaxia',
-                '{s} tras incendio en {l} · limpieza de incendios | Galaxia',
+                'Limpieza de incendios en {ss} · {l}',
+                'Limpieza post incendio en {ss} · {l}',
+                '{ssc} tras incendio en {l} | Galaxia',
             ]
             sv_desc_templates = [
                 'Limpieza de incendios para {s} en {l}: hollín, humo, olor, HEPA H14 e informe para peritos.',
                 'Empresa de limpieza post incendio para {s} en {l}. Descontaminación, ozono y trazabilidad documental 24/7.',
                 'Limpieza de incendios para {s} afectadas por fuego en {l}. Retirada de hollín y desodorización profesional.',
             ]
-            h2 = abs(hash(service + province))
-            title = sv_title_templates[h2 % len(sv_title_templates)].format(s=service_label, l=label)
+            h2 = dhash(service + province)
+            title = sv_title_templates[h2 % len(sv_title_templates)].format(ss=service_short, ssc=service_short.capitalize(), l=label)
             desc = sv_desc_templates[h2 % len(sv_desc_templates)].format(s=service_label, l=label)
             body = landing_body(url, label, landing_copy(province, service, seed), province, service)
             schema = service_schema(label, service, url)
@@ -1875,7 +1943,7 @@ def landing_pages() -> List[Page]:
 def landing_body(url: str, label: str, copy: str, slug: str, service: str | None) -> str:
     prefix = rel_prefix(url)
     service_line = SERVICE_LABELS.get(service, 'instalaciones industriales y activos afectados')
-    related_services = ''.join(f"<a href='{prefix}limpieza-incendios-{s}-{PROVINCES[hash(slug+s)%len(PROVINCES)]}/'>{SERVICE_LABELS[s]}</a>" for s in SERVICES[:6])
+    related_services = ''.join(f"<a href='{prefix}limpieza-incendios-{s}-{PROVINCES[dhash(slug+s)%len(PROVINCES)]}/'>{SERVICE_LABELS[s]}</a>" for s in SERVICES[:6])
     related_cities = ''.join(f"<a href='{prefix}limpieza-incendios-{c}/'>{slug_title(c)}</a>" for c in related_geo_cities(slug, 6))
     h1 = f'Limpieza de incendios en {label}' if not service else f'Limpieza de incendios para {service_line} en {label}'
     # Featured Snippet block (Posición Cero)
@@ -1937,27 +2005,26 @@ def landing_body(url: str, label: str, copy: str, slug: str, service: str | None
     else:
         related_blocks = related_services_block + related_cities_block
     return f"""
-    <main id='main-content' class='section'><div class='wrap content'><div class='breadcrumb'><a href='{prefix}'>Inicio</a> / <a href='{prefix}cobertura/'>Cobertura</a> / {esc(label)}</div><div class='eyebrow'>{eyebrow}</div><h1>{esc(h1)}</h1>{featured}<p class='lead'>Empresa de limpieza de incendios y limpieza post incendio en {esc(label)}: actuamos sobre humo, hollín, olor persistente y residuos de combustión con enfoque B2B, trazabilidad documental e informe compatible con peritación.</p>{landing_image(prefix, label, service)}{dele_panel}{urgency}{callback_form(prefix, label)}{profile}{copy}{inline_links}{related_blocks}{callback_form(prefix, label)}<div class='notice'><strong>Contacto técnico:</strong> {PHONE} · {EMAIL}. Presupuesto previa visita técnica o evaluación documental.</div></div></main>"""
+    <main id='main-content' class='section'><div class='wrap content'><div class='breadcrumb'><a href='{prefix}'>Inicio</a> / <a href='{prefix}cobertura/'>Cobertura</a> / {esc(label)}</div><div class='eyebrow'>{eyebrow}</div><h1>{esc(h1)}</h1>{featured}<p class='lead'>Empresa de limpieza de incendios y limpieza post incendio en {esc(label)}: actuamos sobre humo, hollín, olor persistente y residuos de combustión con enfoque B2B, trazabilidad documental e informe compatible con peritación.</p>{landing_image(prefix, label, service)}{dele_panel}{urgency}{callback_form(prefix, label)}{profile}{copy}{inline_links}{related_blocks}{callback_form(prefix, label, 'bottom')}<div class='notice'><strong>Contacto técnico:</strong> {PHONE} · {EMAIL}. Presupuesto previa visita técnica o evaluación documental.</div></div></main>"""
 
 
 def service_schema(label: str, service: str | None, url: str) -> dict:
     audience = ["peritos de seguros","directores de operaciones","administradores de fincas","jefes de mantenimiento"]
     name = f'{BASE_KEYWORD} en {label}' if not service else f'{BASE_KEYWORD} para {SERVICE_LABELS[service]} en {label}'
-    # Si el slug coincide con una delegación, usar sus datos (dirección y geo
-    # propios). Si no, caer a la central de Madrid.
+    # LocalBusiness con dirección/geo SOLO si hay delegación física real en esa
+    # ciudad. En el resto, no se inventa una dirección (antes se heredaba la de
+    # Madrid en cientos de páginas → NAP falso).
     slug_norm = label.lower().replace(' ', '-')
-    delegation = next((d for d in DELEGATIONS if d['city_slug'] == slug_norm), DELEGATIONS[0])
-    local_business = delegation_local_business(delegation)
-    local_business['areaServed'] = label
+    delegation = next((d for d in DELEGATIONS if d['city_slug'] == slug_norm), None)
+    crumb_name = f'{SERVICE_LABELS[service]} en {label}' if service else label
     crumbs = {
         "@type": "BreadcrumbList",
         "itemListElement": [
             {"@type": "ListItem", "position": 1, "name": "Inicio", "item": DOMAIN + "/"},
             {"@type": "ListItem", "position": 2, "name": "Cobertura", "item": DOMAIN + "/cobertura/"},
-            {"@type": "ListItem", "position": 3, "name": label, "item": DOMAIN + url},
+            {"@type": "ListItem", "position": 3, "name": crumb_name, "item": DOMAIN + url},
         ],
     }
-    # FAQPage + Review específicos de la landing (item 13, 14 backlog)
     landing_faq = faq_schema([
         (f'¿Atienden urgencias por incendio en {label}?',
          f'Sí, atendemos 24/7. La intervención técnica en {label} se coordina en horas tras una visita técnica de evaluación.'),
@@ -1968,27 +2035,22 @@ def service_schema(label: str, service: str | None, url: str) -> dict:
         (f'¿Cuánto tarda la limpieza en {label}?',
          f'Depende del tamaño del siniestro. En {label} solemos estabilizar zonas críticas en 24-72 h y entregar el espacio operativo en pocos días.'),
     ])
-    # 2 reviews rotantes del pool global, deterministas por slug
-    idx = abs(hash(label)) % len(TESTIMONIALS)
-    picks = [TESTIMONIALS[idx], TESTIMONIALS[(idx + 3) % len(TESTIMONIALS)]]
-    landing_reviews = [{
-        '@type': 'Review',
-        'reviewRating': {'@type': 'Rating', 'ratingValue': t['rating'], 'bestRating': 5},
-        'author': {'@type': 'Person', 'name': t['author']},
-        'reviewBody': t['text'],
-        'datePublished': t['date'],
-        'itemReviewed': {'@type': 'LocalBusiness', '@id': local_business['@id']},
-    } for t in picks]
-    return {"@context": "https://schema.org", "@graph": [
+    graph = [
         {"@type": "Service", "name": name,
-         "provider": {"@type": "ProfessionalService", "name": BRAND, "telephone": PHONE_TEL, "email": EMAIL, "hasMap": GBP, "url": DOMAIN, "sameAs": [GBP]},
+         "provider": {"@id": DOMAIN + "/#organization"},
          "audience": {"@type": "BusinessAudience", "audienceType": ', '.join(audience)},
          "areaServed": label, "url": DOMAIN + url},
-        local_business,
+        # Organización mínima para que el @id de provider resuelva en la página.
+        {"@type": "Organization", "@id": DOMAIN + "/#organization", "name": BRAND,
+         "url": DOMAIN, "telephone": PHONE_TEL, "email": EMAIL, "sameAs": [GBP]},
         landing_faq,
-        *landing_reviews,
         crumbs,
-    ]}
+    ]
+    if delegation:
+        lb = delegation_local_business(delegation)
+        lb['areaServed'] = label
+        graph.insert(1, lb)
+    return {"@context": "https://schema.org", "@graph": graph}
 
 
 def clean_previous() -> None:
@@ -2081,17 +2143,17 @@ def webmanifest() -> None:
 
 
 def sitemap(pages: List[Page]) -> None:
+    lastmod = datetime.date.today().isoformat()
     urls = []
     for p in pages:
-        urls.append(f"  <url><loc>{DOMAIN}{p.url}</loc><changefreq>{p.changefreq}</changefreq><priority>{p.priority}</priority></url>")
-    xml = "<?xml version='1.0' encoding='UTF-8'?>\n<urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>\n" + '\n'.join(urls) + "\n</urlset>\n"
+        urls.append(f"  <url><loc>{DOMAIN}{p.url}</loc><lastmod>{lastmod}</lastmod><changefreq>{p.changefreq}</changefreq><priority>{p.priority}</priority></url>")
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + '\n'.join(urls) + "\n</urlset>\n"
     (ROOT / 'sitemap.xml').write_text(xml, encoding='utf-8')
     robots = f"""# robots.txt — {BRAND}
 # https://www.robotstxt.org/
 
 User-agent: *
 Allow: /
-Disallow: /assets/img/logo_nuevo.png
 Disallow: /assets/img/logo_nuevo_02.png
 
 # Bots de IA explícitamente permitidos (queremos visibilidad en respuestas)
@@ -2188,6 +2250,9 @@ def main() -> None:
     # No limpiar antes de convertir activos generados; solo eliminar páginas antiguas preservando spintax y assets/img.
     (ROOT / 'assets' / 'img').mkdir(parents=True, exist_ok=True)
     prepare_assets()
+    # CSS y JS externos cacheables (antes se inyectaban inline en cada página).
+    (ROOT / 'assets' / 'app.css').write_text(CSS, encoding='utf-8')
+    (ROOT / 'assets' / 'app.js').write_text(JS, encoding='utf-8')
     pages = structural_pages() + landing_pages()
     for p in pages:
         write_page(p)

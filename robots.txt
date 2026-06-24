@@ -3,7 +3,6 @@
 
 User-agent: *
 Allow: /
-Disallow: /assets/img/logo_nuevo.png
 Disallow: /assets/img/logo_nuevo_02.png
 
 # Bots de IA explícitamente permitidos (queremos visibilidad en respuestas)
